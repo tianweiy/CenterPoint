@@ -49,7 +49,6 @@ In the end, the data and info files should be organized as follows
                      |── infos_val_10sweeps_withvelo_filter_True.pkl <-- val annotations
                      |── dbinfos_train_10sweeps_withvelo.pkl <-- GT database info files
                      |── gt_database_10sweeps_withvelo <-- GT database 
-                     |── v1.0-trainval <-- metadata and annotations
 ```
 
 
@@ -98,7 +97,6 @@ Organize your dataset as follows
                      |── infos_val_10sweeps_withvelo_filter_True.pkl <-- val annotations
                      |── dbinfos_train_10sweeps_withvelo.pkl <-- GT database info files
                      |── gt_database_10sweeps_withvelo <-- GT database 
-                     |── v1.0-trainval <-- metadata and annotations
                      └── v1.0-test <-- main test folder 
                             ├── samples       <-- key frames
                             ├── sweeps        <-- frames without annotation
