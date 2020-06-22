@@ -1,0 +1,1 @@
+python tools/tracking/pub_test.py --work_dir work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/  --checkpoint work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/infos_test_10sweeps_withvelo.json   --root data/nuScenes/v1.0-test  --version v1.0-test --max_age 3
