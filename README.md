@@ -60,7 +60,7 @@ All results are tested on a Titan Xp GPU with batch size 1. More models and deta
 
 ## Third-party resources
 
-- [AFDet](https://arxiv.org/abs/2006.12671): a concurrent work with similar idea achieves good performance on Waymo dataset. 
+- [AFDet](https://arxiv.org/abs/2006.12671): another work inspired by CenterNet achieves good performance on KITTI/Waymo dataset. 
 
 ## Use CenterPoint
 
