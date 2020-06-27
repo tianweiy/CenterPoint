@@ -110,12 +110,16 @@ def _get_pos_neg_loss(cls_loss, labels):
         cls_neg_loss = cls_loss[..., 0].sum() / batch_size
     return cls_pos_loss, cls_neg_loss
 
+def limit_period(val, offset=0.5, period=np.pi):
+    return val - torch.floor(val / period + offset) * period
 
 def get_direction_target(anchors, reg_targets, one_hot=True, dir_offset=0.0):
     batch_size = reg_targets.shape[0]
     anchors = anchors.view(batch_size, -1, anchors.shape[-1])
     rot_gt = reg_targets[..., -1] + anchors[..., -1]
-    dir_cls_targets = ((rot_gt - dir_offset) > 0).long()
+    #dir_cls_targets = ((rot_gt - dir_offset) > 0).long()
+    dir_cls_targets = (limit_period(rot_gt - dir_offset, 0.5, np.pi*2) >
+                       0).long()
     if one_hot:
         dir_cls_targets = one_hot_f(dir_cls_targets, 2, dtype=anchors.dtype)
     return dir_cls_targets
