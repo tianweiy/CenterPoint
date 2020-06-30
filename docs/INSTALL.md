@@ -1,5 +1,5 @@
 ## Installation
-Modified from [det3d](https://github.com/poodarchu/det3d)'s original document.
+Modified from [det3d](https://github.com/poodarchu/Det3D/tree/56402d4761a5b73acd23080f537599b0888cce07)'s original document.
 
 ### Requirements
 
