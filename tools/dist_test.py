@@ -121,7 +121,6 @@ def main():
     )
 
     checkpoint = load_checkpoint(model, args.checkpoint, map_location="cpu")
-    model.eval()
 
     # put model on gpus
     if distributed:
@@ -137,6 +136,7 @@ def main():
         # model = fuse_bn_recursively(model)
         model = model.cuda()
 
+    model.eval()
     mode = "val"
 
     logger.info(f"work dir: {args.work_dir}")
