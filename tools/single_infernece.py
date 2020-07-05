@@ -106,6 +106,7 @@ class Processor_ROS:
         print(f"input points shape: {points.shape}")
         num_features = 5        
         self.points = points.reshape([-1, num_features])
+        self.points[:, 4] = 0 # timestamp value 
         
         voxels, coords, num_points = self.voxel_generator.generate(self.points)
         num_voxels = np.array([voxels.shape[0]], dtype=np.int64)
