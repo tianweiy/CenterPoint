@@ -184,12 +184,13 @@ class Processor_ROS:
             num_points=num_points,
             num_voxels=num_voxels,
             coordinates=coords,
-            shape=grid_size
+            shape=[grid_size]  # simulate a batch of one example 
         )
         torch.cuda.synchronize()
         t = time.time()
 
-        outputs = self.net(self.inputs)[0]
+        with torch.no_grad():
+            outputs = self.net(self.inputs, return_loss=False)[0]
 
         torch.cuda.synchronize()
         print("  network predict time cost:", time.time() - t)
