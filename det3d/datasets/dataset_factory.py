@@ -1,7 +1,9 @@
 from .nuscenes import NuScenesDataset
+from .waymo import WaymoDataset
 
 dataset_factory = {
     "NUSC": NuScenesDataset,
+    "WAYMO": WaymoDataset
 }
 
 

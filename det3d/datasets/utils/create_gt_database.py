@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 dataset_name_map = {
     "NUSC": "NuScenesDataset",
+    "WAYMO": "WaymoDataset"
 }
 
 
@@ -60,12 +61,14 @@ def create_groundtruth_database(
         if dbinfo_path is None:
             dbinfo_path = root_path / f"dbinfos_train_{nsweeps}sweeps_withvelo.pkl"
     else:
-        raise NotImplementedError()
-
-    if dataset_class_name == "NUSC":
+        if db_path is None:
+            db_path = root_path / "gt_database"
+        if dbinfo_path is None:
+            dbinfo_path = root_path / "dbinfos_train.pkl"
+    if dataset_class_name in ["NUSC", "WAYMO"]:
         point_features = 5
     else:
-        raise NotImplementedError(0)
+        raise NotImplementedError()
 
 
     db_path.mkdir(parents=True, exist_ok=True)
@@ -82,7 +85,9 @@ def create_groundtruth_database(
 
         if dataset_class_name == "NUSC": 
             points = sensor_data["lidar"]["combined"]
-
+        else:
+            points = sensor_data["lidar"]["points"]
+            
         annos = sensor_data["lidar"]["annotations"]
         gt_boxes = annos["boxes"]
         names = annos["names"]
@@ -97,6 +102,8 @@ def create_groundtruth_database(
             difficulty = annos["difficulty"]
 
         num_obj = gt_boxes.shape[0]
+        if num_obj == 0:
+            continue 
         point_indices = box_np_ops.points_in_rbbox(points, gt_boxes)
         for i in range(num_obj):
             if (used_classes is None) or names[i] in used_classes:
@@ -105,7 +112,11 @@ def create_groundtruth_database(
                 gt_points = points[point_indices[:, i]]
                 gt_points[:, :3] -= gt_boxes[i, :3]
                 with open(filepath, "w") as f:
-                    gt_points[:, :point_features].tofile(f)
+                    try:
+                        gt_points[:, :point_features].tofile(f)
+                    except:
+                        print("process {} files".format(index))
+                        break
 
             if (used_classes is None) or names[i] in used_classes:
                 if relative_path:

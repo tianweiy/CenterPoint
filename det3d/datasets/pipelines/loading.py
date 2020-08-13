@@ -9,6 +9,7 @@ from pathlib import Path
 from copy import deepcopy
 from det3d import torchie
 from det3d.core import box_np_ops
+import pickle 
 
 from ..registry import PIPELINES
 
@@ -62,6 +63,26 @@ def read_sweep(sweep):
 
     return points_sweep.T, curr_times.T
 
+def get_obj(path):
+    with open(path, 'rb') as f:
+            obj = pickle.load(f)
+    return obj 
+
+def veh_pos_to_transform(veh_pos):
+    "convert vehicle pose to two transformation matrix"
+    rotation = veh_pos[:3, :3] 
+    tran = veh_pos[:3, 3]
+
+    global_from_car = transform_matrix(
+        tran, Quaternion(matrix=rotation), inverse=False
+    )
+
+    car_from_global = transform_matrix(
+        tran, Quaternion(matrix=rotation), inverse=True
+    )
+
+    return global_from_car, car_from_global
+
 
 @PIPELINES.register_module
 class LoadPointCloudFromFile(object):
@@ -102,7 +123,34 @@ class LoadPointCloudFromFile(object):
             res["lidar"]["points"] = points
             res["lidar"]["times"] = times
             res["lidar"]["combined"] = np.hstack([points, times])
+        
+        elif self.type == "WaymoDataset":
+            path = info['path']
+            obj = get_obj(path)
 
+            points_xyz = obj["lidars"]["points_xyz"]
+            points_feature = obj["lidars"]["points_feature"]
+
+            # normalize intensity 
+            points_feature[:, 0] = np.tanh(points_feature[:, 0])
+
+            res["lidar"]["points"] = np.concatenate([points_xyz, points_feature], axis=-1)
+
+            # read boxes 
+            TYPE_LIST = ['UNKNOWN', 'VEHICLE', 'PEDESTRIAN', 'SIGN', 'CYCLIST']
+            annos = obj['objects']
+            num_points_in_gt = np.array([ann['num_points'] for ann in annos])
+            gt_boxes = np.array([ann['box'] for ann in annos]).reshape(-1, 7)
+            if len(gt_boxes) != 0:
+                gt_boxes[:, -1] = -np.pi / 2 - gt_boxes[:, -1]
+            
+            gt_names = np.array([TYPE_LIST[ann['label']] for ann in annos])
+            mask_not_zero = (num_points_in_gt > 0).reshape(-1)
+
+            res["lidar"]["annotations"] = {
+                "boxes": gt_boxes[mask_not_zero, :].astype(np.float32),
+                "names": gt_names[mask_not_zero],
+            }
         else:
             raise NotImplementedError
 
@@ -123,6 +171,12 @@ class LoadPointCloudAnnotations(object):
                 "tokens": info["gt_boxes_token"],
                 "velocities": info["gt_boxes_velocity"].astype(np.float32),
             }
+        elif res["type"] == 'WaymoDataset':
+            """res["lidar"]["annotations"] = {
+                "boxes": info["gt_boxes"].astype(np.float32),
+                "names": info["gt_names"],
+            }"""
+            pass # already load in the above function 
         else:
             return NotImplementedError
 

@@ -77,7 +77,7 @@ class Preprocess(object):
 
         res["mode"] = self.mode
 
-        if res["type"] in ["KittiDataset", "WaymoDataset", "LyftDataset"]:
+        if res["type"] in ["WaymoDataset"]:
             points = res["lidar"]["points"]
         elif res["type"] in ["NuScenesDataset"]:
             points = res["lidar"]["combined"]
@@ -141,7 +141,7 @@ class Preprocess(object):
 
         if self.mode == "train":
             selected = drop_arrays_by_name(
-                gt_dict["gt_names"], ["DontCare", "ignore"]
+                gt_dict["gt_names"], ["DontCare", "ignore", "UNKNOWN"]
             )
 
             _dict_select(gt_dict, selected)
@@ -651,6 +651,8 @@ class AssignLabel(object):
                 if res['type'] == 'NuScenesDataset':
                     # [reg, hei, dim, vx, vy, rots, rotc]
                     anno_box = np.zeros((max_objs, 10), dtype=np.float32)
+                elif res['type'] == 'WaymoDataset':
+                    anno_box = np.zeros((max_objs, 8), dtype=np.float32)
                 else:
                     raise NotImplementedError("Only Support nuScene for Now!")
 
@@ -711,6 +713,11 @@ class AssignLabel(object):
                                 anno_box[new_idx] = np.concatenate(
                                     (ct - (x, y), z, gt_dict['gt_boxes'][idx][k][3:6],
                                     np.array(vx), np.array(vy), np.sin(rot), np.cos(rot)), axis=None)
+                        elif res['type'] == 'WaymoDataset':
+                            rot = gt_dict['gt_boxes'][idx][k][-1]
+                            anno_box[new_idx] = np.concatenate(
+                                (ct - (x, y), z, np.log(gt_dict['gt_boxes'][idx][k][3:6]),
+                                np.sin(rot), np.cos(rot)), axis=None)
 
                         else:
                             raise NotImplementedError("Only Support KITTI and nuScene for Now!")

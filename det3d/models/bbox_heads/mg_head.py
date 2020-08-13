@@ -1221,7 +1221,7 @@ class CenterHead(nn.Module):
         
         self.no_log = no_log
 
-        self.box_n_dim = 9  # change this if your box is different
+        self.box_n_dim = 9 if dataset == 'nuscenes' else 7  # change this if your box is different
         self.num_anchor_per_locs = [n for n in num_classes]
         self.use_direction_classifier = False 
 
@@ -1298,6 +1298,9 @@ class CenterHead(nn.Module):
             if self.dataset == 'nuscenes':
                 preds_dict['anno_box'] = torch.cat((preds_dict['reg'], preds_dict['height'], preds_dict['dim'],
                                                     preds_dict['vel'], preds_dict['rot']), dim=1)
+            if self.dataset == 'waymo':
+                preds_dict['anno_box'] = torch.cat((preds_dict['reg'], preds_dict['height'], preds_dict['dim'],
+                                                    preds_dict['rot']), dim=1)                  
             else:
                 raise NotImplementedError()
 
