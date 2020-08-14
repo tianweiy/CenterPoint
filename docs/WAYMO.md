@@ -4,12 +4,12 @@
 
 We provide two pretrained models using PointPillars architecture. 
 
-|         |  Split  |  mAPH@L1 |mAPH@L2   | LINK | 
-|---------|---------|---------|--------|------|
-| [PointPillars-512](../configs/point_pillars/waymo_pp_car_large.py)  |  Val    |  64.1   |  55.8| [URL](https://drive.google.com/drive/folders/1dX_x6hgB9uP0oXCy53P5LsFhrjx7usCm?usp=sharing) |   
-| [CenterPoint-Pillar-512](../configs/centerpoint/waymo_centerpoint_pp_car_large.py)  |  Val    |  65.3   | 58.2 | [URL](https://drive.google.com/drive/folders/1eYYchyWYs1w6lwjABz_OvrKS4F40jINK?usp=sharing) | 
+|         |  Split  |  mAPH@L1 |mAPH@L2   | 
+|---------|---------|---------|--------|
+| [PointPillars-512](../configs/point_pillars/waymo_pp_car_large.py)  |  Val    |  64.1   |  55.8|  
+| [CenterPoint-Pillar-512](../configs/centerpoint/waymo_centerpoint_pp_car_large.py)  |  Val    |  65.3   | 58.2 |
 
-**Warning: Waymo open dataset is released under strict Non-commerical license. By downloading the pretrained models, you have confirmed that you have registered on the offcial website and you agree to abide by [user agreement](https://waymo.com/open/terms/).**
+**We have pretrained models available which can be requested by filling in this [form](https://forms.gle/2q2APSAtfmaFJme79).**
 
 ### Prerequisite 
 

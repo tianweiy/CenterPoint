@@ -1,5 +1,7 @@
-"""Tool to convert Waymo Open Dataset to tf.Examples.
+"""Tool to convert Waymo Open Dataset to pickle files.
     Taken from https://github.com/WangYueFt/pillar-od
+    # Copyright (c) Massachusetts Institute of Technology and its affiliates.
+    # Licensed under MIT License
 """
 
 from __future__ import absolute_import

@@ -1,5 +1,7 @@
 """Waymo open dataset decoder.
     Taken from https://github.com/WangYueFt/pillar-od
+    # Copyright (c) Massachusetts Institute of Technology and its affiliates.
+    # Licensed under MIT License
 """
 
 from __future__ import absolute_import
