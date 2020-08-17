@@ -1298,7 +1298,7 @@ class CenterHead(nn.Module):
             if self.dataset == 'nuscenes':
                 preds_dict['anno_box'] = torch.cat((preds_dict['reg'], preds_dict['height'], preds_dict['dim'],
                                                     preds_dict['vel'], preds_dict['rot']), dim=1)
-            if self.dataset == 'waymo':
+            elif self.dataset == 'waymo':
                 preds_dict['anno_box'] = torch.cat((preds_dict['reg'], preds_dict['height'], preds_dict['dim'],
                                                     preds_dict['rot']), dim=1)                  
             else:
