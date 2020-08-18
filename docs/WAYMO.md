@@ -6,8 +6,8 @@ We provide two pretrained models using PointPillars architecture.
 
 |         |  Split  |  mAPH@L1 |mAPH@L2   | 
 |---------|---------|---------|--------|
-| [PointPillars-512](../configs/point_pillars/waymo_pp_car_large.py)  |  Val    |  64.1   |  55.8|  
-| [CenterPoint-Pillar-512](../configs/centerpoint/waymo_centerpoint_pp_car_large.py)  |  Val    |  65.3   | 58.2 |
+| [PointPillars-512](../configs/point_pillars/waymo_pp_car_large.py)  |  Val    |  71.2   |  62.6|  
+| [CenterPoint-Pillar-512](../configs/centerpoint/waymo_centerpoint_pp_car_large.py)  |  Val    |  72.7   | 64.2 |
 
 **We have pretrained models available which can be requested by filling in this [form](https://forms.gle/2q2APSAtfmaFJme79).**
 

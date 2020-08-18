@@ -19,7 +19,7 @@
 
 ## Updates
 
-[2020-08-10] **NEW:** We now support vehicle detection on [Waymo](docs/WAYMO.md). Please stay tuned for more updates in the fall. 
+[2020-08-10] **NEW:** We now support vehicle detection on [Waymo](docs/WAYMO.md) with SOTA performance. Please stay tuned for more updates in the fall. 
 
 ## Contact
 Any questions or discussion are welcome! 

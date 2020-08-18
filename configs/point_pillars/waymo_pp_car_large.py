@@ -106,7 +106,7 @@ test_cfg = dict(
         use_multi_class_nms=False,
         nms_pre_max_size=4096,
         nms_post_max_size=500,
-        nms_iou_threshold=0.01,
+        nms_iou_threshold=0.25,
     ),
     score_threshold=0.1,
     pc_range=[-76.8, -76.8],
