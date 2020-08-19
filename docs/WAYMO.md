@@ -37,10 +37,10 @@ Convert the tfrecord data to pickle files.
 
 ```bash
 # train set 
-python generate_waymo_dataset.py --input_file_pattern='WAYMO_DATASET_ROOT/tfrecord_training/segment-*.tfrecord'  --output_filebase='WAYMO_DATASET_ROOT/train/'
+python det3d/datasets/waymo/waymo_converter.py --input_file_pattern='WAYMO_DATASET_ROOT/tfrecord_training/segment-*.tfrecord'  --output_filebase='WAYMO_DATASET_ROOT/train/'
 
 # validation set 
-python generate_waymo_dataset.py --input_file_pattern='WAYMO_DATASET_ROOT/tfrecord_validation/segment-*.tfrecord'  --output_filebase='WAYMO_DATASET_ROOT/val/'
+python det3d/datasets/waymo/waymo_converter.py --input_file_pattern='WAYMO_DATASET_ROOT/tfrecord_validation/segment-*.tfrecord'  --output_filebase='WAYMO_DATASET_ROOT/val/'
 ```
 
 Create a symlink to the dataset root 
