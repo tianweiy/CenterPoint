@@ -19,7 +19,9 @@
 
 ## Updates
 
-[2020-08-10] **NEW:** We now support vehicle detection on [Waymo](docs/WAYMO.md) with SOTA performance. Please stay tuned for more updates in the fall. 
+[2020-12-11] **NEW:** 3 out of the top 4 entries in the recent NeurIPS 2020 nuScenes 3D Detection challenge used CenterPoint. Congratualations to other participants and please stay tuned for more updates on nuScenes and Waymo soon. 
+
+[2020-08-10] We now support vehicle detection on [Waymo](docs/WAYMO.md) with SOTA performance. Please stay tuned for more updates in the fall. 
 
 ## Contact
 Any questions or discussion are welcome! 
