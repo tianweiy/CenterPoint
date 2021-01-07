@@ -11,7 +11,7 @@ except:
 import numpy as np
 import torch
 import yaml
-from det3d import __version__, torchie
+from det3d import torchie
 from det3d.datasets import build_dataloader, build_dataset
 from det3d.models import build_detector
 from det3d.torchie import Config
@@ -52,7 +52,7 @@ def convert_box(info):
     return detection 
 
 def main():
-    cfg = Config.fromfile('configs/centerpoint/nusc_centerpoint_pp_02voxel_circle_nms_demo.py')
+    cfg = Config.fromfile('configs/nusc/pp/nusc_centerpoint_pp_02voxel_two_pfn_10sweep_demo.py')
     
     model = build_detector(cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
 
@@ -68,7 +68,7 @@ def main():
         pin_memory=False,
     )
 
-    checkpoint = load_checkpoint(model, 'work_dirs/centerpoint_pillar_512_demo/last.pth', map_location="cpu")
+    checkpoint = load_checkpoint(model, 'work_dirs/centerpoint_pillar_512_demo/latest.pth', map_location="cpu")
     model.eval()
 
     model = model.cuda()

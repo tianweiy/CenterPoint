@@ -26,6 +26,21 @@ we have tested the following versions of OS and softwares:
 - CUDA: 10.0
 - CUDNN: 7.5.0
 
+### Basic Installation 
+
+```bash
+# basic python libraries
+conda create --name centerpoint python=3.6
+conda activate centerpoint
+conda install pytorch==1.1.0 torchvision==0.3.0 cudatoolkit=10.0 -c pytorch
+git clone https://github.com/tianweiy/CenterPoint.git
+cd CenterPoint
+pip install -r requirements.txt
+
+# add CenterPoint to PYTHONPATH by adding the following line to ~/.bashrc (change the path accordingly)
+export PYTHONPATH="${PYTHONPATH}:PATH_TO_CENTERPOINT"
+```
+
 ### Advanced Installation 
 
 #### nuScenes dev-kit

@@ -25,7 +25,7 @@
 [2020-12-11] 3 out of the top 4 entries in the recent NeurIPS 2020 [nuScenes 3D Detection challenge](https://www.nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) used CenterPoint. Congratualations to other participants and please stay tuned for more updates on nuScenes and Waymo soon. 
 
 ## Contact
-Any questions or discussion are welcome! 
+Any questions or suggestions are welcome! 
 
 Tianwei Yin [yintianwei@utexas.edu](mailto:yintianwei@utexas.edu) 
 Xingyi Zhou [zhouxy@cs.utexas.edu](mailto:zhouxy@cs.utexas.edu)
@@ -88,31 +88,16 @@ All results are tested on a Titan RTX GPU with batch size 1.
 
 ## Use CenterPoint
 
-### Basic Installation
+### Installation
 
-```bash
-# basic python libraries
-conda create --name centerpoint python=3.6
-conda activate centerpoint
-conda install pytorch==1.1.0 torchvision==0.3.0 cudatoolkit=10.0 -c pytorch
-git clone https://github.com/tianweiy/CenterPoint.git
-cd CenterPoint
-pip install -r requirements.txt
+Please refer to [INSTALL](docs/INSTALL.md) to set up libraries needed for distributed training and sparse convolution.
 
-# add CenterPoint to PYTHONPATH by adding the following line to ~/.bashrc (change the path accordingly)
-export PYTHONPATH="${PYTHONPATH}:PATH_TO_CENTERPOINT"
-```
-
-First download the model (By default, [centerpoint_pillar_512](https://drive.google.com/file/d/1ubWKx3Jg1AqF93qqWIZxgGXTycQ77qM3/view?usp=sharing)) from the [Model Zoo](docs/MODEL_ZOO.md) and put it in ```work_dirs/centerpoint_pillar_512_demo```. 
+First download the model (By default, [centerpoint_pillar_512](https://drive.google.com/drive/folders/1K_wHrBo6yRSG7H7UUjKI4rPnyEA8HvOp)) and put it in ```work_dirs/centerpoint_pillar_512_demo```. 
 
 We provide a driving sequence clip from the [nuScenes dataset](https://www.nuscenes.org). Donwload the [folder](https://drive.google.com/file/d/1bK-xeq5UwJzpPfVDhICDJeKiU1QVZwtI/view?usp=sharing) and put in the main directory.     
 Then run a demo by ```python tools/demo.py```. If setup corectly, you will see an output video like (red is gt objects, blue is the prediction): 
 
 <p align="center"> <img src='docs/demo.gif' align="center" height="350px"> </p> 
-
-## Advanced Installation  
-
-For more advanced usage, please refer to [INSTALL](docs/INSTALL.md) to set up more libraries needed for distributed training and sparse convolution.
 
 ## Benchmark Evaluation and Training 
 
