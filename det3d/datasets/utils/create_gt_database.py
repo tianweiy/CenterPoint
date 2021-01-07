@@ -119,6 +119,9 @@ def create_groundtruth_database(
         for i in range(num_obj):
             if (used_classes is None) or names[i] in used_classes:
                 filename = f"{image_idx}_{names[i]}_{i}.bin"
+                dirpath = os.path.join(str(db_path), names[i])
+                os.makedirs(dirpath, exist_ok=True)
+
                 filepath = os.path.join(str(db_path), names[i], filename)
                 gt_points = points[point_indices[:, i]]
                 gt_points[:, :3] -= gt_boxes[i, :3]
