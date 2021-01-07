@@ -8,8 +8,8 @@ from .registry import (
     LOSSES,
     NECKS,
     READERS,
-    ROI_EXTRACTORS,
-    SHARED_HEADS,
+    SECOND_STAGE,
+    ROI_HEAD
 )
 
 
@@ -19,6 +19,12 @@ def build(cfg, registry, default_args=None):
         return nn.Sequential(*modules)
     else:
         return build_from_cfg(cfg, registry, default_args)
+
+def build_second_stage_module(cfg):
+    return build(cfg, SECOND_STAGE)
+
+def build_roi_head(cfg):
+    return build(cfg, ROI_HEAD)
 
 
 def build_reader(cfg):
@@ -31,15 +37,6 @@ def build_backbone(cfg):
 
 def build_neck(cfg):
     return build(cfg, NECKS)
-
-
-def build_roi_extractor(cfg):
-    return build(cfg, ROI_EXTRACTORS)
-
-
-def build_shared_head(cfg):
-    return build(cfg, SHARED_HEADS)
-
 
 def build_head(cfg):
     return build(cfg, HEADS)

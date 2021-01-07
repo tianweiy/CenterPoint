@@ -47,6 +47,7 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
 
     own_state = module.state_dict()
     for name, param in state_dict.items():
+        # a hacky fixed to load a new voxelnet 
         if name not in own_state:
             unexpected_keys.append(name)
             continue

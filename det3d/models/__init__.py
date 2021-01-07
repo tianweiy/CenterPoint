@@ -1,4 +1,3 @@
-# from .anchor_heads import *  # noqa: F401,F403
 import importlib
 spconv_spec = importlib.util.find_spec("spconv")
 found = spconv_spec is not None
@@ -13,8 +12,7 @@ from .builder import (
     build_head,
     build_loss,
     build_neck,
-    build_roi_extractor,
-    build_shared_head,
+    build_roi_head
 )
 from .detectors import *  # noqa: F401,F403
 from .necks import *  # noqa: F401,F403
@@ -26,26 +24,19 @@ from .registry import (
     LOSSES,
     NECKS,
     READERS,
-    ROI_EXTRACTORS,
-    SHARED_HEADS,
 )
-
-# from .roi_extractors import *  # noqa: F401,F403
-# from .shared_heads import *  # noqa: F401,F403
+from .second_stage import * 
+from .roi_heads import * 
 
 __all__ = [
     "READERS",
     "BACKBONES",
     "NECKS",
-    "ROI_EXTRACTORS",
-    "SHARED_HEADS",
     "HEADS",
     "LOSSES",
     "DETECTORS",
     "build_backbone",
     "build_neck",
-    "build_roi_extractor",
-    "build_shared_head",
     "build_head",
     "build_loss",
     "build_detector",

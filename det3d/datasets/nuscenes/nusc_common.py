@@ -1,11 +1,9 @@
-import os.path as osp
 import numpy as np
 import pickle
-import random
 
 from pathlib import Path
 from functools import reduce
-from typing import Tuple, List
+from typing import List
 
 from tqdm import tqdm
 from pyquaternion import Quaternion
@@ -13,8 +11,6 @@ from pyquaternion import Quaternion
 try:
     from nuscenes import NuScenes
     from nuscenes.utils import splits
-    from nuscenes.utils.data_classes import LidarPointCloud
-    from nuscenes.utils.geometry_utils import transform_matrix
     from nuscenes.utils.data_classes import Box
     from nuscenes.eval.detection.config import config_factory
     from nuscenes.eval.detection.evaluate import NuScenesEval
@@ -160,69 +156,6 @@ cls_attr_dist = {
     },
 }
 
-
-def box_velocity(
-    nusc, sample_annotation_token: str, max_time_diff: float = 1.5
-) -> np.ndarray:
-    """
-    Estimate the velocity for an annotation.
-    If possible, we compute the centered difference between the previous and next frame.
-    Otherwise we use the difference between the current and previous/next frame.
-    If the velocity cannot be estimated, values are set to np.nan.
-    :param sample_annotation_token: Unique sample_annotation identifier.
-    :param max_time_diff: Max allowed time diff between consecutive samples that are used to estimate velocities.
-    :return: <np.float: 3>. Velocity in x/y/z direction in m/s.
-    """
-
-    current = nusc.get("sample_annotation", sample_annotation_token)
-    has_prev = current["prev"] != ""
-    has_next = current["next"] != ""
-
-    # Cannot estimate velocity for a single annotation.
-    if not has_prev and not has_next:
-        return np.array([np.nan, np.nan, np.nan])
-
-    if has_prev:
-        first = nusc.get("sample_annotation", current["prev"])
-    else:
-        first = current
-
-    if has_next:
-        last = nusc.get("sample_annotation", current["next"])
-    else:
-        last = current
-
-    pos_last = np.array(last["translation"])
-    pos_first = np.array(first["translation"])
-    pos_diff = pos_last - pos_first
-
-    time_last = 1e-6 * nusc.get("sample", last["sample_token"])["timestamp"]
-    time_first = 1e-6 * nusc.get("sample", first["sample_token"])["timestamp"]
-    time_diff = time_last - time_first
-
-    if has_next and has_prev:
-        # If doing centered difference, allow for up to double the max_time_diff.
-        max_time_diff *= 2
-
-    if time_diff > max_time_diff:
-        # If time_diff is too big, don't return an estimate.
-        return np.array([np.nan, np.nan, np.nan])
-    else:
-        return pos_diff / time_diff
-
-
-def remove_close(points, radius: float) -> None:
-    """
-    Removes point too close within a certain radius from origin.
-    :param radius: Radius below which points are removed.
-    """
-    x_filt = np.abs(points[0, :]) < radius
-    y_filt = np.abs(points[1, :]) < radius
-    not_close = np.logical_not(np.logical_and(x_filt, y_filt))
-    points = points[:, not_close]
-    return points
-
-
 def _second_det_to_nusc_box(detection):
     box3d = detection["box3d_lidar"].detach().cpu().numpy()
     scores = detection["scores"].detach().cpu().numpy()
@@ -253,10 +186,8 @@ def _lidar_nusc_box_to_global(nusc, boxes, sample_token):
 
     sd_record = nusc.get("sample_data", sample_data_token)
     cs_record = nusc.get("calibrated_sensor", sd_record["calibrated_sensor_token"])
-    sensor_record = nusc.get("sensor", cs_record["sensor_token"])
     pose_record = nusc.get("ego_pose", sd_record["ego_pose_token"])
 
-    data_path = nusc.get_sample_data_path(sample_data_token)
     box_list = []
     for box in boxes:
         # Move box to ego vehicle coord system
@@ -286,10 +217,6 @@ def _get_available_scenes(nusc):
                 break
             else:
                 break
-            if not sd_rec["next"] == "":
-                sd_rec = nusc.get("sample_data", sd_rec["next"])
-            else:
-                has_more_frames = False
         if scene_not_exist:
             continue
         available_scenes.append(scene)
@@ -318,10 +245,8 @@ def get_sample_data(
 
     if sensor_record["modality"] == "camera":
         cam_intrinsic = np.array(cs_record["camera_intrinsic"])
-        imsize = (sd_record["width"], sd_record["height"])
     else:
         cam_intrinsic = None
-        imsize = None
 
     # Retrieve all sample annotations and map to sensor coordinate system.
     if selected_anntokens is not None:
@@ -332,7 +257,7 @@ def get_sample_data(
     # Make list of Box objects including coord system transforms.
     box_list = []
     for box in boxes:
-
+        box.velocity = nusc.box_velocity(box.token)
         # Move box to ego vehicle coord system
         box.translate(-np.array(pose_record["translation"]))
         box.rotate(Quaternion(pose_record["rotation"]).inverse)
@@ -345,32 +270,6 @@ def get_sample_data(
 
     return data_path, box_list, cam_intrinsic
 
-
-def get_sample_ground_plane(root_path, version):
-    nusc = NuScenes(version=version, dataroot=root_path, verbose=True)
-    rets = {}
-
-    for sample in tqdm(nusc.sample):
-        chan = "LIDAR_TOP"
-        sd_token = sample["data"][chan]
-        sd_rec = nusc.get("sample_data", sd_token)
-
-        lidar_path, _, _ = get_sample_data(nusc, sd_token)
-        points = read_file(lidar_path)
-        points = np.concatenate((points[:, :3], np.ones((points.shape[0], 1))), axis=1)
-
-        plane, inliers, outliers = fit_plane_LSE_RANSAC(
-            points, return_outlier_list=True
-        )
-
-        xx = points[:, 0]
-        yy = points[:, 1]
-        zz = (-plane[0] * xx - plane[1] * yy - plane[3]) / plane[2]
-
-        rets.update({sd_token: {"plane": plane, "height": zz,}})
-
-    with open(nusc.root_path / "infos_trainval_ground_plane.pkl", "wb") as f:
-        pickle.dump(rets, f)
 
 
 def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10, filter_zero=True):
@@ -484,30 +383,6 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
             len(info["sweeps"]) == nsweeps - 1
         ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
         """ read from api """
-        # sd_record = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
-        #
-        # # Get boxes in lidar frame.
-        # lidar_path, boxes, cam_intrinsic = nusc.get_sample_data(
-        #     sample['data']['LIDAR_TOP'])
-        #
-        # # Get aggregated point cloud in lidar frame.
-        # sample_rec = nusc.get('sample', sd_record['sample_token'])
-        # chan = sd_record['channel']
-        # ref_chan = 'LIDAR_TOP'
-        # pc, times = LidarPointCloud.from_file_multisweep(nusc,
-        #                                                  sample_rec,
-        #                                                  chan,
-        #                                                  ref_chan,
-        #                                                  nsweeps=nsweeps)
-        # lidar_path = osp.join(nusc.dataroot, "sample_10sweeps/LIDAR_TOP",
-        #                       sample['data']['LIDAR_TOP'] + ".bin")
-        # pc.points.astype('float32').tofile(open(lidar_path, "wb"))
-        #
-        # info = {
-        #     "lidar_path": lidar_path,
-        #     "token": sample["token"],
-        #     # "timestamp": times,
-        # }
 
         if not test:
             annotations = [
@@ -629,18 +504,6 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", nsweeps=10, filter
             root_path / "infos_val_{:02d}sweeps_withvelo_filter_{}.pkl".format(nsweeps, filter_zero), "wb"
         ) as f:
             pickle.dump(val_nusc_infos, f)
-
-
-def get_box_mean(info_path, class_name="vehicle.car"):
-    with open(info_path, "rb") as f:
-        nusc_infos = pickle.load(f)
-
-    gt_boxes_list = []
-    for info in nusc_infos:
-        mask = np.array([s == class_name for s in info["gt_names"]], dtype=np.bool_)
-        gt_boxes_list.append(info["gt_boxes"][mask].reshape(-1, 7))
-    gt_boxes_list = np.concatenate(gt_boxes_list, axis=0)
-    print(gt_boxes_list.mean(0))
 
 
 def eval_main(nusc, eval_version, res_path, eval_set, output_dir):

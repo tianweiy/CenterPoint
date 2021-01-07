@@ -11,7 +11,7 @@ except:
 import numpy as np
 import torch
 import yaml
-from det3d import __version__, torchie
+from det3d import torchie
 from det3d.datasets import build_dataloader, build_dataset
 from det3d.models import build_detector
 from det3d.torchie import Config
@@ -37,7 +37,7 @@ def save_pred(pred, root):
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a detector")
     parser.add_argument("config", help="train config file path")
-    parser.add_argument("--work_dir", help="the dir to save logs and models")
+    parser.add_argument("--work_dir", required=True, help="the dir to save logs and models")
     parser.add_argument(
         "--checkpoint", help="the dir to checkpoint which the model read from"
     )
@@ -197,9 +197,7 @@ def main():
         os.makedirs(args.work_dir)
 
     save_pred(predictions, args.work_dir)
-    with open(os.path.join(args.work_dir, 'prediction.pkl'), 'rb') as f:
-        predictions = pickle.load(f)
-    
+
     result_dict, _ = dataset.evaluation(copy.deepcopy(predictions), output_dir=args.work_dir, testset=args.testset)
 
     if result_dict is not None:

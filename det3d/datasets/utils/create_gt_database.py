@@ -1,13 +1,10 @@
 import pickle
 from pathlib import Path
-
+import os 
 import numpy as np
 
 from det3d.core import box_np_ops
 from det3d.datasets.dataset_factory import get_dataset
-from det3d.torchie import Config
-
-from joblib import Parallel, delayed
 from tqdm import tqdm
 
 dataset_name_map = {
@@ -24,10 +21,6 @@ def create_groundtruth_database(
     db_path=None,
     dbinfo_path=None,
     relative_path=True,
-    add_rgb=False,
-    lidar_only=False,
-    bev_only=False,
-    coors_range=None,
     **kwargs,
 ):
     pipeline = [
@@ -55,21 +48,20 @@ def create_groundtruth_database(
 
     root_path = Path(data_path)
 
-    if dataset_class_name == "NUSC": 
+    if dataset_class_name in ["WAYMO", "NUSC"]: 
         if db_path is None:
             db_path = root_path / f"gt_database_{nsweeps}sweeps_withvelo"
         if dbinfo_path is None:
             dbinfo_path = root_path / f"dbinfos_train_{nsweeps}sweeps_withvelo.pkl"
     else:
-        if db_path is None:
-            db_path = root_path / "gt_database"
-        if dbinfo_path is None:
-            dbinfo_path = root_path / "dbinfos_train.pkl"
-    if dataset_class_name in ["NUSC", "WAYMO"]:
-        point_features = 5
-    else:
         raise NotImplementedError()
 
+    if dataset_class_name == "NUSC":
+        point_features = 5
+    elif dataset_class_name == "WAYMO":
+        point_features = 5 if nsweeps == 1 else 6 
+    else:
+        raise NotImplementedError()
 
     db_path.mkdir(parents=True, exist_ok=True)
 
@@ -83,7 +75,7 @@ def create_groundtruth_database(
         if "image_idx" in sensor_data["metadata"]:
             image_idx = sensor_data["metadata"]["image_idx"]
 
-        if dataset_class_name == "NUSC": 
+        if nsweeps > 1: 
             points = sensor_data["lidar"]["combined"]
         else:
             points = sensor_data["lidar"]["points"]
@@ -91,6 +83,25 @@ def create_groundtruth_database(
         annos = sensor_data["lidar"]["annotations"]
         gt_boxes = annos["boxes"]
         names = annos["names"]
+
+        if dataset_class_name == 'WAYMO':
+            # waymo dataset contains millions of objects and it is not possible to store
+            # all of them into a single folder
+            # we randomly sample a few objects for gt augmentation
+            # We keep all cyclist as they are rare 
+            if index % 4 != 0:
+                mask = (names == 'VEHICLE') 
+                mask = np.logical_not(mask)
+                names = names[mask]
+                gt_boxes = gt_boxes[mask]
+
+            if index % 2 != 0:
+                mask = (names == 'PEDESTRIAN')
+                mask = np.logical_not(mask)
+                names = names[mask]
+                gt_boxes = gt_boxes[mask]
+
+
         group_dict = {}
         group_ids = np.full([gt_boxes.shape[0]], -1, dtype=np.int64)
         if "group_ids" in annos:
@@ -108,7 +119,7 @@ def create_groundtruth_database(
         for i in range(num_obj):
             if (used_classes is None) or names[i] in used_classes:
                 filename = f"{image_idx}_{names[i]}_{i}.bin"
-                filepath = db_path / filename
+                filepath = os.path.join(str(db_path), names[i], filename)
                 gt_points = points[point_indices[:, i]]
                 gt_points[:, :3] -= gt_boxes[i, :3]
                 with open(filepath, "w") as f:
@@ -120,7 +131,7 @@ def create_groundtruth_database(
 
             if (used_classes is None) or names[i] in used_classes:
                 if relative_path:
-                    db_dump_path = str(db_path.stem + "/" + filename)
+                    db_dump_path = os.path.join(db_path.stem, names[i], filename)
                 else:
                     db_dump_path = str(filepath)
 

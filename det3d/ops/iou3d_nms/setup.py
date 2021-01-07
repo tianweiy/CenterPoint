@@ -5,6 +5,8 @@ setup(
     name='iou3d_nms',
     ext_modules=[
         CUDAExtension('iou3d_nms_cuda', [
+            'src/iou3d_cpu.cpp',
+            'src/iou3d_nms_api.cpp',
             'src/iou3d_nms.cpp',
             'src/iou3d_nms_kernel.cu',
         ],

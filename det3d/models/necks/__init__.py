@@ -1,4 +1,3 @@
-from .fpn import FPN
-from .rpn import RPN, PointModule
+from .rpn import RPN
 
-__all__ = ["RPN", "PointModule", "FPN"]
+__all__ = ["RPN"]

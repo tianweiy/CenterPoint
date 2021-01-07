@@ -1,5 +1,5 @@
 """Tool to convert Waymo Open Dataset to pickle files.
-    Taken from https://github.com/WangYueFt/pillar-od
+    Adapted from https://github.com/WangYueFt/pillar-od
     # Copyright (c) Massachusetts Institute of Technology and its affiliates.
     # Licensed under MIT License
 """
@@ -8,56 +8,64 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import app
-from absl import flags
-import glob
+import glob, argparse, tqdm, pickle, os 
 
-import time
+import waymo_decoder 
 import tensorflow.compat.v2 as tf
-import waymo_decoder
 from waymo_open_dataset import dataset_pb2
-import pickle
+
 from multiprocessing import Pool 
-import tqdm
 
 tf.enable_v2_behavior()
 
-flags.DEFINE_string('input_file_pattern', None, 'Path to read input')
-flags.DEFINE_string('output_filebase', None, 'Path to write output')
-
-FLAGS = flags.FLAGS
 fnames = None 
+LIDAR_PATH = None
+ANNO_PATH = None 
 
 def convert(idx):
-  global fnames
-  fname = fnames[idx]
-  dataset = tf.data.TFRecordDataset(fname, compression_type='')
-  for frame_id, data in enumerate(dataset):
-    frame = dataset_pb2.Frame()
-    frame.ParseFromString(bytearray(data.numpy()))
-    decoded_frame = waymo_decoder.decode_frame(frame)
-   
-    with open(FLAGS.output_filebase+'seq_{}_frame_{}.pkl'.format(idx, frame_id), 'wb') as f:
-      pickle.dump(decoded_frame, f)
+    global fnames
+    fname = fnames[idx]
+    dataset = tf.data.TFRecordDataset(fname, compression_type='')
+    for frame_id, data in enumerate(dataset):
+        frame = dataset_pb2.Frame()
+        frame.ParseFromString(bytearray(data.numpy()))
+        decoded_frame = waymo_decoder.decode_frame(frame, frame_id)
+        decoded_annos = waymo_decoder.decode_annos(frame, frame_id)
+
+        with open(os.path.join(LIDAR_PATH, 'seq_{}_frame_{}.pkl'.format(idx, frame_id)), 'wb') as f:
+            pickle.dump(decoded_frame, f)
+        
+        with open(os.path.join(ANNO_PATH, 'seq_{}_frame_{}.pkl'.format(idx, frame_id)), 'wb') as f:
+            pickle.dump(decoded_annos, f)
 
 
-def main(unused_argv):
-  gpus = tf.config.experimental.list_physical_devices('GPU')
-  for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
-  assert FLAGS.input_file_pattern
-  assert FLAGS.output_filebase
+def main(args):
+    global fnames 
+    fnames = list(glob.glob(args.record_path))
 
+    print("Number of files {}".format(len(fnames)))
 
-  global fnames 
-  fnames = list(glob.glob(FLAGS.input_file_pattern))
-
-  print("Number of files {}".format(len(fnames)))
-
-  with Pool(8) as p:
-    r = list(tqdm.tqdm(p.imap(convert, range(len(fnames))), total=len(fnames)))
-
+    with Pool(128) as p: # change according to your cpu
+        r = list(tqdm.tqdm(p.imap(convert, range(len(fnames))), total=len(fnames)))
 
 
 if __name__ == '__main__':
-  app.run(main)
+    parser = argparse.ArgumentParser(description='Waymo Data Converter')
+    parser.add_argument('--root_path', type=str, required=True)
+    parser.add_argument('--record_path', type=str, required=True)
+
+    args = parser.parse_args()
+
+    if not os.path.isdir(args.root_path):
+        os.mkdir(args.root_path)
+
+    LIDAR_PATH = os.path.join(args.root_path, 'lidar')
+    ANNO_PATH = os.path.join(args.root_path, 'annos')
+
+    if not os.path.isdir(LIDAR_PATH):
+        os.mkdir(LIDAR_PATH)
+
+    if not os.path.isdir(ANNO_PATH):
+        os.mkdir(ANNO_PATH)
+    
+    main(args)

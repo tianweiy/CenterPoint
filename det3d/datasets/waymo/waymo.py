@@ -3,6 +3,7 @@ import pickle
 import json
 import random
 import operator
+from numba.cuda.simulator.api import detect
 import numpy as np
 
 from functools import reduce
@@ -27,16 +28,21 @@ class WaymoDataset(PointCloudDataset):
         class_names=None,
         test_mode=False,
         sample=False,
+        nsweeps=1,
+        load_interval=1,
         **kwargs,
     ):
+        self.load_interval = load_interval 
         self.sample = sample
+        self.nsweeps = nsweeps
+        print("Using {} sweeps".format(nsweeps))
         super(WaymoDataset, self).__init__(
             root_path, info_path, pipeline, test_mode=test_mode, class_names=class_names
         )
 
         self._info_path = info_path
         self._class_names = class_names
-        self._num_point_features = WaymoDataset.NumPointFeatures
+        self._num_point_features = WaymoDataset.NumPointFeatures if nsweeps == 1 else WaymoDataset.NumPointFeatures+1
 
     def reset(self):
         assert False 
@@ -46,7 +52,9 @@ class WaymoDataset(PointCloudDataset):
         with open(self._info_path, "rb") as f:
             _waymo_infos_all = pickle.load(f)
 
-        self._waymo_infos = _waymo_infos_all
+        self._waymo_infos = _waymo_infos_all[::self.load_interval]
+
+        print("Using {} Frames".format(len(self._waymo_infos)))
 
     def __len__(self):
 
@@ -63,6 +71,7 @@ class WaymoDataset(PointCloudDataset):
                 "type": "lidar",
                 "points": None,
                 "annotations": None,
+                "nsweeps": self.nsweeps, 
             },
             "metadata": {
                 "image_prefix": self._root_path,
@@ -72,7 +81,7 @@ class WaymoDataset(PointCloudDataset):
             "calib": None,
             "cam": {},
             "mode": "val" if self.test_mode else "train",
-            "type": "WaymoDataset"
+            "type": "WaymoDataset",
         }
 
         data, _ = self.pipeline(res, info)
@@ -87,6 +96,7 @@ class WaymoDataset(PointCloudDataset):
 
         infos = self._waymo_infos 
         infos = reorganize_info(infos)
+
         _create_pd_detection(detections, infos, output_dir)
 
         print("use waymo devkit tool for evaluation")

@@ -1,3 +1,3 @@
-from .mg_head import Head, MultiGroupHead, CenterHead
+from .center_head import CenterHead
 
-__all__ = ["MultiGroupHead", "Head", "CenterHead"]
+__all__ = ["CenterHead"]

@@ -5,11 +5,9 @@ Licensed under MIT License [see LICENSE].
 """
 
 import torch
-from det3d.models.utils import Empty, change_default_args, get_paddings_indicator
+from det3d.models.utils import get_paddings_indicator
 from torch import nn
 from torch.nn import functional as F
-
-from .. import builder
 from ..registry import BACKBONES, READERS
 from ..utils import build_norm_layer
 

@@ -173,38 +173,14 @@ class DataBaseSamplerV2:
         if len(sampled) > 0:
             sampled_gt_boxes = np.concatenate(sampled_gt_boxes, axis=0)
 
-            if road_planes is not None:
-                # Only support KITTI
-                # image plane
-                assert False, "Not correct yet!"
-                a, b, c, d = road_planes
-
-                center = sampled_gt_boxes[:, :3]
-                center[:, 2] -= sampled_gt_boxes[:, 5] / 2
-                center_cam = box_np_ops.lidar_to_camera(center, calib["rect"], calib["Trv2c"])
-                
-                cur_height_cam = (-d - a * center_cam[:, 0] - c * center_cam[:, 2]) / b
-                center_cam[:, 1] = cur_height_cam
-                lidar_tmp_point = box_np_ops.camera_to_lidar(center_cam, calib["rect"], calib["Trv2c"])
-                cur_lidar_height = lidar_tmp_point[:, 2]
-
-                # botom to middle center 
-                # kitti [0.5, 0.5, 0] center to [0.5, 0.5, 0.5]
-                sampled_gt_boxes[:, 2] = cur_lidar_height + sampled_gt_boxes[:, 5] / 2
-
-                # mv_height = sampled_gt_boxes[:, 2] - cur_lidar_height
-                # sampled_gt_boxes[:, 2] -= mv_height
-
             num_sampled = len(sampled)
             s_points_list = []
             for info in sampled:
                 try:
-                    # TODO fix point read error
                     s_points = np.fromfile(
                         str(pathlib.Path(root_path) / info["path"]), dtype=np.float32
                     ).reshape(-1, num_point_features)
-                    # if not add_rgb_to_points:
-                    #     s_points = s_points[:, :4]
+
                     if "rot_transform" in info:
                         rot = info["rot_transform"]
                         s_points[:, :3] = box_np_ops.rotation_points_single_angle(
@@ -216,9 +192,6 @@ class DataBaseSamplerV2:
                 except Exception:
                     print(str(pathlib.Path(root_path) / info["path"]))
                     continue
-            # gt_bboxes = np.stack([s["bbox"] for s in sampled], axis=0)
-            # if np.random.choice([False, True], replace=False, p=[0.3, 0.7]):
-            # do random crop.
             if random_crop:
                 s_points_list_new = []
                 assert calib is not None

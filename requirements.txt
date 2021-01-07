@@ -1,14 +1,10 @@
-scikit-image                                                                                              
-scipy                                                                                                     
 numba                                                                                                     
 matplotlib                                                                                                
 fire                                                                                                      
 protobuf                                                                                                  
 opencv-python                                                                                             
 opencv-contrib-python                                                                                     
-pybind11                                                                                                  
-vtk                                                                                                       
-joblib                                                                                                    
+pybind11                                                                                                                                                                                                                                                                                                             
 easydict                                                                                                  
 open3d-python                                                                                             
 terminaltables                                                                                            
@@ -31,3 +27,4 @@ Shapely
 tqdm
 pyyaml
 requests
+nuscenes-devkit==1.0.5

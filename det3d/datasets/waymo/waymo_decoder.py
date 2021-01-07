@@ -19,13 +19,13 @@ from waymo_open_dataset.utils import range_image_utils
 from waymo_open_dataset.utils import transform_utils
 tf.enable_v2_behavior()
 
-def decode_frame(frame):
-  """Decodes native waymo Frame proto to pickle dict."""
+def decode_frame(frame, frame_id):
+  """Decodes native waymo Frame proto to tf.Examples."""
 
   lidars = extract_points(frame.lasers,
                           frame.context.laser_calibrations,
                           frame.pose)
-  objects = extract_objects(frame.laser_labels)
+
   frame_name = '{scene_name}_{location}_{time_of_day}_{timestamp}'.format(
       scene_name=frame.context.name,
       location=frame.context.stats.location,
@@ -35,13 +35,37 @@ def decode_frame(frame):
   example_data = {
       'scene_name': frame.context.name,
       'frame_name': frame_name,
+      'frame_id': frame_id,
       'lidars': lidars,
-      'objects': objects,
   }
 
   return example_data
   # return encode_tf_example(example_data, FEATURE_SPEC)
 
+def decode_annos(frame, frame_id):
+  """Decodes some meta data (e.g. calibration matrices, frame matrices)."""
+
+  veh_to_global = np.array(frame.pose.transform)
+
+  ref_pose = np.reshape(np.array(frame.pose.transform), [4, 4])
+  global_from_ref_rotation = ref_pose[:3, :3] 
+  objects = extract_objects(frame.laser_labels, global_from_ref_rotation)
+
+  frame_name = '{scene_name}_{location}_{time_of_day}_{timestamp}'.format(
+      scene_name=frame.context.name,
+      location=frame.context.stats.location,
+      time_of_day=frame.context.stats.time_of_day,
+      timestamp=frame.timestamp_micros)
+
+  annos = {
+    'scene_name': frame.context.name,
+    'frame_name': frame_name,
+    'frame_id': frame_id,
+    'veh_to_global': veh_to_global,  
+    'objects': objects,
+  }
+
+  return annos 
 
 
 def extract_points_from_range_image(laser, calibration, frame_pose):
@@ -131,13 +155,13 @@ def extract_points(lasers, laser_calibrations, frame_pose):
 
 def global_vel_to_ref(vel, global_from_ref_rotation):
   # inverse means ref_from_global, rotation_matrix for normalization
-  # remove z axis velocity 
-  vel = [vel[0], vel[1], 0.0]
+  vel = [vel[0], vel[1], 0]
   ref = np.dot(Quaternion(matrix=global_from_ref_rotation).inverse.rotation_matrix, vel) 
+  ref = [ref[0], ref[1], 0.0]
 
   return ref
 
-def extract_objects(laser_labels):
+def extract_objects(laser_labels, global_from_ref_rotation):
   """Extract objects."""
   objects = []
   for object_id, label in enumerate(laser_labels):
@@ -160,22 +184,24 @@ def extract_objects(laser_labels):
     else:
       combined_difficulty_level = label.detection_difficulty_level
 
+    ref_velocity = global_vel_to_ref(speed, global_from_ref_rotation)
+
     objects.append({
         'id': object_id,
         'name': label.id,
         'label': category_label,
         'box': np.array([box.center_x, box.center_y, box.center_z,
-                         box.length, box.width, box.height, box.heading],
-                        dtype=np.float32),
+                         box.length, box.width, box.height, ref_velocity[0], 
+                         ref_velocity[1], box.heading], dtype=np.float32),
         'num_points':
             num_lidar_points_in_box,
         'detection_difficulty_level':
             label.detection_difficulty_level,
         'combined_difficulty_level':
             combined_difficulty_level,
-        'speed':
+        'global_speed':
             np.array(speed, dtype=np.float32),
-        'accel':
+        'global_accel':
             np.array(accel, dtype=np.float32),
     })
   return objects

@@ -25,64 +25,6 @@ from torch.nn.parallel import DistributedDataParallel
 from .env import get_root_logger
 
 
-def example_convert_to_torch(example, dtype=torch.float32, device=None) -> dict:
-    assert device is not None
-
-    example_torch = {}
-    float_names = ["voxels", "bev_map"]
-    for k, v in example.items():
-        if k in ["anchors", "reg_targets", "reg_weights"]:
-            res = []
-            for kk, vv in v.items():
-                res.append(torch.tensor(vv).to(device, non_blocking=True))
-                # vv = np.array(vv)
-                # res.append(torch.tensor(vv, dtype=torch.float32,
-                #                         device=device))
-            example_torch[k] = res
-        elif k in float_names:
-            # slow when directly provide fp32 data with dtype=torch.half
-            example_torch[k] = v.to(device, non_blocking=True)
-            # example_torch[k] = torch.tensor(v,
-            #                                 dtype=torch.float32,
-            #                                 device=device)
-        elif k in ["coordinates", "num_points"]:
-            example_torch[k] = v.to(device, non_blocking=True)
-            # example_torch[k] = torch.tensor(v,
-            #                                 dtype=torch.int32,
-            #                                 device=device)
-        elif k == "labels":
-            res = []
-            for kk, vv in v.items():
-                # vv = np.array(vv)
-                res.append(torch.tensor(vv).to(device, non_blocking=True))
-            example_torch[k] = res
-        elif k == "points":
-            example_torch[k] = v.to(device, non_blocking=True)
-            # example_torch[k] = torch.tensor(v,
-            #                                 dtype=torch.float,
-            #                                 device=device)
-        elif k in ["anchors_mask"]:
-            res = []
-            for kk, vv in v.items():
-                res.append(torch.tensor(vv).to(device, non_blocking=True))
-            example_torch[k] = res
-        elif k == "calib":
-            calib = {}
-            for k1, v1 in v.items():
-                # calib[k1] = torch.tensor(v1, dtype=dtype, device=device)
-                calib[k1] = torch.tensor(v1).to(device, non_blocking=True)
-            example_torch[k] = calib
-        elif k == "num_voxels":
-            example_torch[k] = v.to(device, non_blocking=True)
-            # example_torch[k] = torch.tensor(v,
-            #                                 dtype=torch.int64,
-            #                                 device=device)
-        else:
-            example_torch[k] = v
-
-    return example_torch
-
-
 def example_to_device(example, device=None, non_blocking=False) -> dict:
     assert device is not None
 
@@ -98,6 +40,10 @@ def example_to_device(example, device=None, non_blocking=False) -> dict:
             "num_points",
             "points",
             "num_voxels",
+            "cyv_voxels",
+            "cyv_num_voxels",
+            "cyv_coordinates",
+            "cyv_num_points"
         ]:
             example_torch[k] = v.to(device, non_blocking=non_blocking)
         elif k == "calib":

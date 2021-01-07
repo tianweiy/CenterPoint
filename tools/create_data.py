@@ -2,7 +2,7 @@ import copy
 from pathlib import Path
 import pickle
 
-import fire
+import fire, os
 
 from det3d.datasets.nuscenes import nusc_common as nu_ds
 from det3d.datasets.utils.create_gt_database import create_groundtruth_database
@@ -19,15 +19,15 @@ def nuscenes_data_prep(root_path, version, nsweeps=10, filter_zero=True):
 
 def waymo_data_prep(root_path, split, nsweeps=1):
     waymo_ds.create_waymo_infos(root_path, split=split, nsweeps=nsweeps)
-    
-    """if split == 'train': 
+    if split == 'train': 
         create_groundtruth_database(
             "WAYMO",
             root_path,
             Path(root_path) / "infos_train_{:02d}sweeps_filter_zero_gt.pkl".format(nsweeps),
-            used_classes=['VEHICLE']
+            used_classes=['VEHICLE', 'CYCLIST', 'PEDESTRIAN'],
+            nsweeps=nsweeps
         )
-    """
+    
 
 if __name__ == "__main__":
     fire.Fire()

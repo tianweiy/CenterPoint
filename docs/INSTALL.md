@@ -66,5 +66,4 @@ python setup.py bdist_wheel
 cd ./dist && pip install *
 ```
 
-#### Check out [GETTING_START](GETTING_START.md) to prepare the data. Then go to the [Model zoo](MODEL_ZOO.md) and play with all those pretrained models. 
-**Don't panic if you face any problems during the installation process, please feel free to open an issue.**
+#### Check out [GETTING_START](GETTING_START.md) to prepare the data and play with all those pretrained models. 

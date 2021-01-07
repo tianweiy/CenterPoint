@@ -3,6 +3,8 @@ import torch.nn as nn
 from .. import builder
 from ..registry import DETECTORS
 from .base import BaseDetector
+from ..utils.finetune_utils import FrozenBatchNorm2d
+from det3d.torchie.trainer import load_checkpoint
 
 
 @DETECTORS.register_module
@@ -26,43 +28,23 @@ class SingleStageDetector(BaseDetector):
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
-        # self.init_weights(pretrained=pretrained)
+        self.init_weights(pretrained=pretrained)
 
     def init_weights(self, pretrained=None):
-        super(SingleStageDetector, self).init_weights(pretrained)
-        self.backbone.init_weights(pretrained=pretrained)
-        if self.with_neck:
-            if isinstance(self.neck, nn.Sequential):
-                for m in self.neck:
-                    m.init_weights()
-            else:
-                self.neck.init_weights()
-        self.bbox_head.init_weights()
-
+        if pretrained is None:
+            return 
+        try:
+            load_checkpoint(self, pretrained, strict=False)
+            print("init weight from {}".format(pretrained))
+        except:
+            print("no pretrained model at {}".format(pretrained))
+            
     def extract_feat(self, data):
         input_features = self.reader(data)
         x = self.backbone(input_features)
         if self.with_neck:
             x = self.neck(x)
         return x
-
-    def forward_dummy(self, example):
-        x = self.extract_feat(example)
-        outs = self.bbox_head(x)
-        return outs
-
-    """
-    def simple_test(self, example, example_meta, rescale=False):
-        x = self.extract_feat(example)
-        outs = self.bbox_head(x)
-        bbox_inputs = outs + (example_meta, self.test_cfg, rescale)
-        bbox_list = self.bbox_head.get_bboxes(*bbox_inputs)
-        bbox_results = [
-            bbox2result(det_bboxes, det_labels, self.bbox_head.num_classes)
-            for det_bboxes, det_labels in bbox_list
-        ]
-        return bbox_results[0]
-    """
 
     def aug_test(self, example, rescale=False):
         raise NotImplementedError
@@ -72,3 +54,9 @@ class SingleStageDetector(BaseDetector):
 
     def predict(self, example, preds_dicts):
         pass
+
+    def freeze(self):
+        for p in self.parameters():
+            p.requires_grad = False
+        FrozenBatchNorm2d.convert_frozen_batchnorm(self)
+        return self

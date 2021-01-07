@@ -1,7 +1,7 @@
 /*
 3D IoU Calculation and Rotated NMS(modified from 2D NMS written by others)
 Written by Shaoshuai Shi
-All Rights Reserved 2019.
+All Rights Reserved 2019-2020.
 */
 
 #include <torch/serialize/tensor.h>
@@ -9,9 +9,20 @@ All Rights Reserved 2019.
 #include <vector>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include "iou3d_nms.h"
 
-#define CHECK_CUDA(x) AT_CHECK(x.type().is_cuda(), #x, " must be a CUDAtensor ")
-#define CHECK_CONTIGUOUS(x) AT_CHECK(x.is_contiguous(), #x, " must be contiguous ")
+#define CHECK_CUDA(x) do { \
+  if (!x.type().is_cuda()) { \
+    fprintf(stderr, "%s must be CUDA tensor at %s:%d\n", #x, __FILE__, __LINE__); \
+    exit(-1); \
+  } \
+} while (0)
+#define CHECK_CONTIGUOUS(x) do { \
+  if (!x.is_contiguous()) { \
+    fprintf(stderr, "%s must be contiguous tensor at %s:%d\n", #x, __FILE__, __LINE__); \
+    exit(-1); \
+  } \
+} while (0)
 #define CHECK_INPUT(x) CHECK_CUDA(x);CHECK_CONTIGUOUS(x)
 
 #define DIVUP(m,n) ((m) / (n) + ((m) % (n) > 0))
@@ -34,11 +45,12 @@ void boxesioubevLauncher(const int num_a, const float *boxes_a, const int num_b,
 void nmsLauncher(const float *boxes, unsigned long long * mask, int boxes_num, float nms_overlap_thresh);
 void nmsNormalLauncher(const float *boxes, unsigned long long * mask, int boxes_num, float nms_overlap_thresh);
 
+
 int boxes_overlap_bev_gpu(at::Tensor boxes_a, at::Tensor boxes_b, at::Tensor ans_overlap){
-    // params boxes_a: (N, 5) [x1, y1, x2, y2, ry]
-    // params boxes_b: (M, 5) 
+    // params boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]
+    // params boxes_b: (M, 7) [x, y, z, dx, dy, dz, heading]
     // params ans_overlap: (N, M)
-    
+
     CHECK_INPUT(boxes_a);
     CHECK_INPUT(boxes_b);
     CHECK_INPUT(ans_overlap);
@@ -56,10 +68,9 @@ int boxes_overlap_bev_gpu(at::Tensor boxes_a, at::Tensor boxes_b, at::Tensor ans
 }
 
 int boxes_iou_bev_gpu(at::Tensor boxes_a, at::Tensor boxes_b, at::Tensor ans_iou){
-    // params boxes_a: (N, 5) [x1, y1, x2, y2, ry]
-    // params boxes_b: (M, 5) 
+    // params boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]
+    // params boxes_b: (M, 7) [x, y, z, dx, dy, dz, heading]
     // params ans_overlap: (N, M)
-    
     CHECK_INPUT(boxes_a);
     CHECK_INPUT(boxes_b);
     CHECK_INPUT(ans_iou);
@@ -77,9 +88,8 @@ int boxes_iou_bev_gpu(at::Tensor boxes_a, at::Tensor boxes_b, at::Tensor ans_iou
 }
 
 int nms_gpu(at::Tensor boxes, at::Tensor keep, float nms_overlap_thresh){
-    // params boxes: (N, 5) [x1, y1, x2, y2, ry]
+    // params boxes: (N, 7) [x, y, z, dx, dy, dz, heading]
     // params keep: (N)
-
     CHECK_INPUT(boxes);
     CHECK_CONTIGUOUS(keep);
 
@@ -127,7 +137,7 @@ int nms_gpu(at::Tensor boxes, at::Tensor keep, float nms_overlap_thresh){
 
 
 int nms_normal_gpu(at::Tensor boxes, at::Tensor keep, float nms_overlap_thresh){
-    // params boxes: (N, 5) [x1, y1, x2, y2, ry]
+    // params boxes: (N, 7) [x, y, z, dx, dy, dz, heading]
     // params keep: (N)
 
     CHECK_INPUT(boxes);
@@ -175,12 +185,4 @@ int nms_normal_gpu(at::Tensor boxes, at::Tensor keep, float nms_overlap_thresh){
     return num_to_keep;
 }
 
-
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("boxes_overlap_bev_gpu", &boxes_overlap_bev_gpu, "oriented boxes overlap");
-  m.def("boxes_iou_bev_gpu", &boxes_iou_bev_gpu, "oriented boxes iou");
-  m.def("nms_gpu", &nms_gpu, "oriented nms gpu");
-  m.def("nms_normal_gpu", &nms_normal_gpu, "nms gpu");
-}
 
