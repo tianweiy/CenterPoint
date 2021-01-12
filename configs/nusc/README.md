@@ -22,7 +22,7 @@
 
 | Model                 | FPS       | Validation MAP  | Validation NDS  | Link          |
 |-----------------------|-----------------|-----------------|-----------------|---------------|
-| [centerpoint_pillar](voxelnet/nusc_centerpoint_pp_02voxel_two_pfn_10sweep.py) | 31 | 50.3 | 60.2 | [URL](https://drive.google.com/drive/folders/1K_wHrBo6yRSG7H7UUjKI4rPnyEA8HvOp?usp=sharing) |
+| [centerpoint_pillar](pp/nusc_centerpoint_pp_02voxel_two_pfn_10sweep.py) | 31 | 50.3 | 60.2 | [URL](https://drive.google.com/drive/folders/1K_wHrBo6yRSG7H7UUjKI4rPnyEA8HvOp?usp=sharing) |
 
 
 ## nuScenes 3D Tracking 
