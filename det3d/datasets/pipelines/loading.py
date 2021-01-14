@@ -180,8 +180,10 @@ class LoadPointCloudAnnotations(object):
     def __call__(self, res, info):
 
         if res["type"] in ["NuScenesDataset"] and "gt_boxes" in info:
+            gt_boxes = info["gt_boxes"].astype(np.float32)
+            gt_boxes[np.isnan(gt_boxes)] = 0
             res["lidar"]["annotations"] = {
-                "boxes": info["gt_boxes"].astype(np.float32),
+                "boxes": gt_boxes,
                 "names": info["gt_names"],
                 "tokens": info["gt_boxes_token"],
                 "velocities": info["gt_boxes_velocity"].astype(np.float32),

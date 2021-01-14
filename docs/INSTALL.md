@@ -10,13 +10,11 @@ Modified from [det3d](https://github.com/poodarchu/Det3D/tree/56402d4761a5b73acd
 - CMake 3.13.2 or higher
 - [APEX](https://github.com/nvidia/apex)
 - [spconv](https://github.com/traveller59/spconv/commit/73427720a539caf9a44ec58abe3af7aa9ddb8e39) 
-- [nuscenes-devkit](https://github.com/tianweiy/nuscenes-devkit)
 
 #### Notes
-- spconv and nuscenes-devkit should be the specific version from links above
+- spconv should be the specific version from links above
 - The spconv version after this commit will consume much more memory. 
 - A rule of thumb is that your pytorch cuda version must match the cuda version of your systsem for other cuda extensions to work properly. 
-- For the nuscenes-devkit, our forked version changes the velocity output from nan to zero for objects without ground truth velocity. 
 
 we have tested the following versions of OS and softwares:
 
