@@ -58,7 +58,7 @@ def _create_pd_detection(detections, infos, result_path, tracking=False):
 
     for token, detection in tqdm(detections.items()):
         info = infos[token]
-        obj = get_obj(info['path'])
+        obj = get_obj(info['anno_path'])
 
         box3d = detection["box3d_lidar"].detach().cpu().numpy()
         scores = detection["scores"].detach().cpu().numpy()
