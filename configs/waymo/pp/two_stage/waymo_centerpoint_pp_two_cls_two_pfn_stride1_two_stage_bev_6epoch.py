@@ -4,7 +4,7 @@ import logging
 from det3d.utils.config_tool import get_downsample_factor
 
 tasks = [
-    dict(num_class=3, class_names=['VEHICLE', 'PEDESTRIAN', 'CYCLIST']),
+    dict(num_class=2, class_names=['VEHICLE', 'PEDESTRIAN']),
 ]
 
 class_names = list(itertools.chain(*[t["class_names"] for t in tasks]))
