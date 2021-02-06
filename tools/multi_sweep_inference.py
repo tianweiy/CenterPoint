@@ -146,7 +146,7 @@ class Processor_ROS:
             voxel_size=self.voxel_size,
             point_cloud_range=self.range,
             max_num_points=self.max_points_in_voxel,
-            max_voxels=self.max_voxel_num,
+            max_voxels=self.max_voxel_num[1],
         )
         # nuscenes dataset
         lidar2imu_t = np.array([0.985793, 0.0, 1.84019])
