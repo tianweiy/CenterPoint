@@ -10,15 +10,17 @@
 
 
 
-    @article{yin2020center,
+    @article{yin2021center,
       title={Center-based 3D Object Detection and Tracking},
       author={Yin, Tianwei and Zhou, Xingyi and Kr{\"a}henb{\"u}hl, Philipp},
-      journal={arXiv:2006.11275},
-      year={2020},
+      journal={CVPR},
+      year={2021},
     }
 
 
 ## NEWS
+
+[2021-02-28] CenterPoint is accepted at CVPR 2021 :fire:
 
 [2021-01-06] CenterPoint v1.0 is released. Without bells and whistles, we rank first among all Lidar-only methods on Waymo Open Dataset with a single model that runs at 11 FPS. Check out CenterPoint's model zoo for [Waymo](configs/waymo/README.md) and [nuScenes](configs/nusc/README.md). 
 
