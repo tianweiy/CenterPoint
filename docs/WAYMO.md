@@ -27,13 +27,13 @@ Convert the tfrecord data to pickle files.
 
 ```bash
 # train set 
-CUDA_VISIBLE_DEVICES=-1 python det3d/datasets/waymo/waymo_converter.py --tfrecord_path 'WAYMO_DATASET_ROOT/tfrecord_training/segment-*.tfrecord'  --root_path 'WAYMO_DATASET_ROOT/train/'
+CUDA_VISIBLE_DEVICES=-1 python det3d/datasets/waymo/waymo_converter.py --record_path 'WAYMO_DATASET_ROOT/tfrecord_training/segment-*.tfrecord'  --root_path 'WAYMO_DATASET_ROOT/train/'
 
 # validation set 
-CUDA_VISIBLE_DEVICES=-1 python det3d/datasets/waymo/waymo_converter.py --tfrecord_path 'WAYMO_DATASET_ROOT/tfrecord_validation/segment-*.tfrecord'  --root_path 'WAYMO_DATASET_ROOT/val/'
+CUDA_VISIBLE_DEVICES=-1 python det3d/datasets/waymo/waymo_converter.py --record_path 'WAYMO_DATASET_ROOT/tfrecord_validation/segment-*.tfrecord'  --root_path 'WAYMO_DATASET_ROOT/val/'
 
 # testing set 
-CUDA_VISIBLE_DEVICES=-1 python det3d/datasets/waymo/waymo_converter.py --tfrecord_path 'WAYMO_DATASET_ROOT/tfrecord_testing/segment-*.tfrecord'  --root_path 'WAYMO_DATASET_ROOT/test/'
+CUDA_VISIBLE_DEVICES=-1 python det3d/datasets/waymo/waymo_converter.py --record_path 'WAYMO_DATASET_ROOT/tfrecord_testing/segment-*.tfrecord'  --root_path 'WAYMO_DATASET_ROOT/test/'
 ```
 
 Create a symlink to the dataset root 
