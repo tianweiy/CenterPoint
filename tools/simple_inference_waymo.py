@@ -26,6 +26,7 @@ def initialize_model(args):
         load_checkpoint(model, args.checkpoint, map_location="cpu")
     # print(model)
     if args.fp16:
+        assert 0, "Not working yet"
         print("cast model to fp16")
         model = model.half()
 
