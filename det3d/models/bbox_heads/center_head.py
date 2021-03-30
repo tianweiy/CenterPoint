@@ -390,8 +390,8 @@ class CenterHead(nn.Module):
             batch_hm = batch_hm.reshape(batch, H*W, num_cls)
 
             ys, xs = torch.meshgrid([torch.arange(0, H), torch.arange(0, W)])
-            ys = ys.view(1, H, W).repeat(batch, 1, 1).to(batch_hm.device).float()
-            xs = xs.view(1, H, W).repeat(batch, 1, 1).to(batch_hm.device).float()
+            ys = ys.view(1, H, W).repeat(batch, 1, 1).to(batch_hm)
+            xs = xs.view(1, H, W).repeat(batch, 1, 1).to(batch_hm)
 
             xs = xs.view(batch, -1, 1) + batch_reg[:, :, 0:1]
             ys = ys.view(batch, -1, 1) + batch_reg[:, :, 1:2]
@@ -469,7 +469,7 @@ class CenterHead(nn.Module):
 
             boxes_for_nms = box_preds[:, [0, 1, 2, 3, 4, 5, -1]]
 
-            selected = box_torch_ops.rotate_nms_pcdet(boxes_for_nms, scores, 
+            selected = box_torch_ops.rotate_nms_pcdet(boxes_for_nms.float(), scores.float(), 
                                 thresh=test_cfg.nms.nms_iou_threshold,
                                 pre_maxsize=test_cfg.nms.nms_pre_max_size,
                                 post_max_size=test_cfg.nms.nms_post_max_size)

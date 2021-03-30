@@ -26,7 +26,6 @@ def initialize_model(args):
         load_checkpoint(model, args.checkpoint, map_location="cpu")
     # print(model)
     if args.fp16:
-        assert 0, "Not working yet"
         print("cast model to fp16")
         model = model.half()
 
@@ -69,7 +68,6 @@ def _process_inputs(points, fp16):
 
     if fp16:
         voxels = voxels.half()
-        coords = coords.half()
 
     inputs = dict(
             voxels = voxels,
