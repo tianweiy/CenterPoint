@@ -86,7 +86,7 @@ class NuScenesDataset(PointCloudDataset):
                         _cls_infos[name].append(info)
 
             duplicated_samples = sum([len(v) for _, v in _cls_infos.items()])
-            _cls_dist = {k: len(v) / duplicated_samples for k, v in _cls_infos.items()}
+            _cls_dist = {k: len(v) / max(duplicated_samples, 1) for k, v in _cls_infos.items()}
 
             self._nusc_infos = []
 
