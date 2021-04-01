@@ -265,7 +265,8 @@ def train_detector(model, dataset, cfg, distributed=False, validate=False, logge
 
     total_steps = cfg.total_epochs * len(data_loaders[0])
     # print(f"total_steps: {total_steps}")
-
+    if distributed:
+        model = apex.parallel.convert_syncbn_model(model)
     if cfg.lr_config.type == "one_cycle":
         # build trainer
         optimizer = build_one_cycle_optimizer(model, cfg.optimizer)
@@ -281,7 +282,6 @@ def train_detector(model, dataset, cfg, distributed=False, validate=False, logge
 
     # put model on gpus
     if distributed:
-        model = apex.parallel.convert_syncbn_model(model)
         model = DistributedDataParallel(
             model.cuda(cfg.local_rank),
             device_ids=[cfg.local_rank],
