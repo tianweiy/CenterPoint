@@ -19,8 +19,8 @@ class RegLoss(nn.Module):
     mask = mask.float().unsqueeze(2) 
 
     loss = F.l1_loss(pred*mask, target*mask, reduction='none')
-    loss = loss / (mask.sum() + 1e-4)
-    loss = loss.transpose(2 ,0).sum(dim=2).sum(dim=1)
+    loss = loss / (mask.sum(dim=(1, 2)).unsqueeze(1).unsqueeze(2) + 1e-4)
+    loss = loss.transpose(2, 0).sum(dim=2).sum(dim=1)
     return loss
 
 class FastFocalLoss(nn.Module):
@@ -45,10 +45,12 @@ class FastFocalLoss(nn.Module):
 
     pos_pred_pix = _transpose_and_gather_feat(out, ind) # B x M x C
     pos_pred = pos_pred_pix.gather(2, cat.unsqueeze(2)) # B x M
-    num_pos = mask.sum()
+    num_pos = mask.sum(dim=1)
     pos_loss = torch.log(pos_pred) * torch.pow(1 - pos_pred, 2) * \
                mask.unsqueeze(2)
-    pos_loss = pos_loss.sum()
-    if num_pos == 0:
-      return - neg_loss
-    return - (pos_loss + neg_loss) / num_pos
+    pos_loss = pos_loss.sum(dim=(1, 2))
+    mask = (num_pos > 0).float()   # ind of num_pos > 0
+    lossA = - neg_loss
+    lossB = - (pos_loss + neg_loss) / (num_pos + 1e-4)
+    loss = mask * lossB + (1 - mask) * lossA
+    return loss.sum()
