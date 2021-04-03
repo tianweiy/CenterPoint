@@ -7,8 +7,8 @@ from torch import nn
 from torch._utils import _unflatten_dense_tensors
 from torch.autograd import Variable
 from torch.nn.utils import parameters_to_vector
-
-bn_types = (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)
+from apex.parallel.optimized_sync_batchnorm import SyncBatchNorm
+bn_types = (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.modules.batchnorm._BatchNorm, SyncBatchNorm)
 
 
 def split_bn_bias(layer_groups):
