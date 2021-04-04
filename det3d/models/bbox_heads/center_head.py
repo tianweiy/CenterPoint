@@ -20,6 +20,7 @@ try:
 except:
     print("Deformable Convolution not built!")
 
+from det3d.core.utils.circle_nms_jit import circle_nms
 
 class FeatureAdaption(nn.Module):
     """Feature Adaption Module.
@@ -422,7 +423,7 @@ class CenterHead(nn.Module):
             if test_cfg.get('per_class_nms', False):
                 pass 
             else:
-                rets.append(self.post_processing(batch_box_preds, batch_hm, test_cfg, post_center_range)) 
+                rets.append(self.post_processing(batch_box_preds, batch_hm, test_cfg, post_center_range, task_id)) 
 
         # Merge branches results
         ret_list = []
@@ -447,7 +448,7 @@ class CenterHead(nn.Module):
         return ret_list 
 
     @torch.no_grad()
-    def post_processing(self, batch_box_preds, batch_hm, test_cfg, post_center_range):
+    def post_processing(self, batch_box_preds, batch_hm, test_cfg, post_center_range, task_id):
         batch_size = len(batch_hm)
 
         prediction_dicts = []
@@ -469,10 +470,15 @@ class CenterHead(nn.Module):
 
             boxes_for_nms = box_preds[:, [0, 1, 2, 3, 4, 5, -1]]
 
-            selected = box_torch_ops.rotate_nms_pcdet(boxes_for_nms.float(), scores.float(), 
-                                thresh=test_cfg.nms.nms_iou_threshold,
-                                pre_maxsize=test_cfg.nms.nms_pre_max_size,
-                                post_max_size=test_cfg.nms.nms_post_max_size)
+            if test_cfg.get('circular_nms', False):
+                centers = boxes_for_nms[:, [0, 1]] 
+                boxes = torch.cat([centers, scores.view(-1, 1)], dim=1)
+                selected = _circle_nms(boxes, min_radius=test_cfg.min_radius[task_id], post_max_size=test_cfg.nms.nms_post_max_size)  
+            else:
+                selected = box_torch_ops.rotate_nms_pcdet(boxes_for_nms.float(), scores.float(), 
+                                    thresh=test_cfg.nms.nms_iou_threshold,
+                                    pre_maxsize=test_cfg.nms.nms_pre_max_size,
+                                    post_max_size=test_cfg.nms.nms_post_max_size)
 
             selected_boxes = box_preds[selected]
             selected_scores = scores[selected]
@@ -487,3 +493,14 @@ class CenterHead(nn.Module):
             prediction_dicts.append(prediction_dict)
 
         return prediction_dicts 
+
+import numpy as np 
+def _circle_nms(boxes, min_radius, post_max_size=83):
+    """
+    NMS according to center distance
+    """
+    keep = np.array(circle_nms(boxes.cpu().numpy(), thresh=min_radius))[:post_max_size]
+
+    keep = torch.from_numpy(keep).long().to(boxes.device)
+
+    return keep  
