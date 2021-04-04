@@ -16,12 +16,13 @@ class RegLoss(nn.Module):
   
   def forward(self, output, mask, ind, target):
     pred = _transpose_and_gather_feat(output, ind)
+    num_pos = mask.sum(dim=1)
     mask = mask.float().unsqueeze(2) 
 
     loss = F.l1_loss(pred*mask, target*mask, reduction='none')
     loss = loss / (mask.sum(dim=(1, 2)).unsqueeze(1).unsqueeze(2) + 1e-4)
     # loss: B * max_objects * dim(x,y,z,l,w,h,sin,cos)
-    loss = loss.transpose(2, 0).mean(dim=2).mean(dim=1)
+    loss = loss.transpose(2, 0).sum(dim=2).mean(dim=1)/num_pos
     return loss
 
 class FastFocalLoss(nn.Module):
