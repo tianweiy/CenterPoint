@@ -34,6 +34,7 @@ class Preprocess(object):
         if self.mode == "train":
             self.global_rotation_noise = cfg.global_rot_noise
             self.global_scaling_noise = cfg.global_scale_noise
+            self.global_translate_std = cfg.get('global_translate_std', 0)
             self.class_names = cfg.class_names
             if cfg.db_sampler != None:
                 self.db_sampler = build_dbsampler(cfg.db_sampler)
@@ -129,6 +130,9 @@ class Preprocess(object):
             )
             gt_dict["gt_boxes"], points = prep.global_scaling_v2(
                 gt_dict["gt_boxes"], points, *self.global_scaling_noise
+            )
+            gt_dict["gt_boxes"], points = prep.global_translate_(
+                gt_dict["gt_boxes"], points, noise_translate_std=self.global_translate_std
             )
         elif self.no_augmentation:
             gt_boxes_mask = np.array(

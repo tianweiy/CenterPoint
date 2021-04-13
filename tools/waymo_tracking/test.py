@@ -26,7 +26,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Tracking Evaluation")
     parser.add_argument("--work_dir", help="the dir to save logs and tracking results")
     parser.add_argument(
-        "--checkpoint", help="the dir to checkpoint which the model read from"
+        "--checkpoint", help="the dir to prediction file"
     )
     parser.add_argument(
         "--info_path", type=str

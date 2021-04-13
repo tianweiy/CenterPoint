@@ -11,6 +11,16 @@
 **We provide training / validation configurations, logs, pretrained models, and prediction files for all models in the paper**
 
 ### VoxelNet 
+| Model                 | Validation MAP  | Validation NDS  | Link          |
+|-----------------------|-----------------|-----------------|---------------|
+| [centerpoint_voxel_1440](voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py) | 58.5 | 66.3 | [URL](https://drive.google.com/drive/folders/1FOfCe9nWQrySUx42PlZyaKWAK2Or0sZQ?usp=sharing)  |
+
+
+
+### VoxelNet(depreacted) 
+
+These results are obtained before the bug fix. 
+
 | Model                 | FPS              | Validation MAP  | Validation NDS  | Link          |
 |-----------------------|------------------|-----------------|-----------------|---------------|
 | [centerpoint_voxel_1024](voxelnet/nusc_centerpoint_voxelnet_01voxel.py) | 16 | 56.4 | 64.8 | [URL](https://drive.google.com/drive/folders/1RyBD23GDfeU4AnRkea2BxlrosbKJmDKW?usp=sharing) |

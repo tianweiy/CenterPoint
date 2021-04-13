@@ -20,9 +20,11 @@
 
 ## NEWS
 
+[2021-04-13] Better nuScenes results by fixing sync-bn bug and using stronger augmentations. Plese refer to [nuScenes](configs/nusc/README.md).  
+
 [2021-02-28] CenterPoint is accepted at CVPR 2021 :fire:
 
-[2021-01-06] CenterPoint v1.0 is released. Without bells and whistles, we rank first among all Lidar-only methods on Waymo Open Dataset with a single model that runs at 11 FPS. Check out CenterPoint's model zoo for [Waymo](configs/waymo/README.md) and [nuScenes](configs/nusc/README.md). 
+[2021-01-06] CenterPoint v0.1 is released. Without bells and whistles, we rank first among all Lidar-only methods on Waymo Open Dataset with a single model that runs at 11 FPS. Check out CenterPoint's model zoo for [Waymo](configs/waymo/README.md) and [nuScenes](configs/nusc/README.md). 
 
 [2020-12-11] 3 out of the top 4 entries in the recent NeurIPS 2020 [nuScenes 3D Detection challenge](https://www.nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) used CenterPoint. Congratualations to other participants and please stay tuned for more updates on nuScenes and Waymo soon. 
 
@@ -94,17 +96,14 @@ All results are tested on a Titan RTX GPU with batch size 1.
 
 Please refer to [INSTALL](docs/INSTALL.md) to set up libraries needed for distributed training and sparse convolution.
 
-First download the model (By default, [centerpoint_pillar_512](https://drive.google.com/drive/folders/1K_wHrBo6yRSG7H7UUjKI4rPnyEA8HvOp)) and put it in ```work_dirs/centerpoint_pillar_512_demo```. 
-
-We provide a driving sequence clip from the [nuScenes dataset](https://www.nuscenes.org). Donwload the [folder](https://drive.google.com/file/d/1bK-xeq5UwJzpPfVDhICDJeKiU1QVZwtI/view?usp=sharing) and put in the main directory.     
-Then run a demo by ```python tools/demo.py```. If setup corectly, you will see an output video like (red is gt objects, blue is the prediction): 
-
-<p align="center"> <img src='docs/demo.gif' align="center" height="350px"> </p> 
-
 ## Benchmark Evaluation and Training 
 
 Please refer to [GETTING_START](docs/GETTING_START.md) to prepare the data. Then follow the instruction there to reproduce our detection and tracking results. All detection configurations are included in [configs](configs) and we provide the scripts for all tracking experiments in [tracking_scripts](tracking_scripts). 
 
+### ToDo List
+- [ ] Support visualization with Open3D  
+- [ ] Colab demo 
+- [ ] Docker   
 
 ## License
 

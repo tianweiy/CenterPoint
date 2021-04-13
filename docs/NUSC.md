@@ -75,7 +75,11 @@ The pretrained models and configurations are in [MODEL ZOO](../configs/nusc/READ
 
 ### Tracking
 
-Please refer to [tracking_scripts](../tracking_scripts) to reproduce all tracking results. The detection files are provided in the [MODEL ZOO](../configs/nusc/README.md)
+You can find the detection files are in the [MODEL ZOO](../configs/nusc/README.md). After downloading the detection files, you can simply run 
+
+```bash 
+python tools/nusc_tracking/pub_test.py --work_dir WORK_DIR_PATH  --checkpoint DETECTION_PATH  
+```
 
 ### Test Set 
 
@@ -106,10 +110,4 @@ Download the ```centerpoint_voxel_1440_dcn_flip``` [here](https://drive.google.c
 
 ```bash
 python tools/dist_test.py configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn_flip.py --work_dir work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset  --checkpoint work_dirs/nusc_0075_dcn_flip_track/voxelnet_converted.pth  --testset --speed_test 
-```
-
-With the generated detection files, you can create the tracking prediction by running
-
-```bash 
-bash tracking_scripts/centerpoint_voxel_1440_dcn_flip_testset.sh
 ```
