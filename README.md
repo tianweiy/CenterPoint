@@ -98,7 +98,7 @@ Please refer to [INSTALL](docs/INSTALL.md) to set up libraries needed for distri
 
 ## Benchmark Evaluation and Training 
 
-Please refer to [GETTING_START](docs/GETTING_START.md) to prepare the data. Then follow the instruction there to reproduce our detection and tracking results. All detection configurations are included in [configs](configs) and we provide the scripts for all tracking experiments in [tracking_scripts](tracking_scripts). 
+Please refer to [GETTING_START](docs/GETTING_START.md) to prepare the data. Then follow the instruction there to reproduce our detection and tracking results. All detection configurations are included in [configs](configs).
 
 ### ToDo List
 - [ ] Support visualization with Open3D  
