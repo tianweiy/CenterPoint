@@ -66,12 +66,3 @@ For 3D Tracking, we apply our center-based tracking on top of our two frame mode
 |---------|---------|--------|--------|---------|--------|-------|
 | [centerpoint_voxel_two_sweep](../../tracking_scripts/centerpoint_voxel_two_sweep_val.sh)| Val |  55.0   | 55.0      | 57.4  | 55.8 |  11    | 
 | [centerpoint_voxel_two_sweep](../../tracking_scripts/centerpoint_voxel_two_sweep_test.sh)| Test | 59.4     |  56.6      |   60.0      | 58.7       |  11    | 
-
-## Enhanced Results
-
-This section aims to keep track of follow-up works based on CenterPoint. We appreciate all contributions and please send us an [email](mailto:yintianwei@utexas.edu) if you want to be listed here.  
-
-| Method | Val mAPH | Val MOTA | Test mAPH | Test MOTA | Reference | 
-|--------|----------|----------|-----------|-----------|-----------|
-| baseline | 70.3   | 55.8 | 71.9 | 58.7 | [CenterPoint](https://arxiv.org/abs/2006.11275) |
- 
