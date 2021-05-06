@@ -78,7 +78,11 @@ The pretrained models and configurations are in [MODEL ZOO](../configs/nusc/READ
 You can find the detection files are in the [MODEL ZOO](../configs/nusc/README.md). After downloading the detection files, you can simply run 
 
 ```bash 
+# val set 
 python tools/nusc_tracking/pub_test.py --work_dir WORK_DIR_PATH  --checkpoint DETECTION_PATH  
+
+# test set 
+python tools/nusc_tracking/pub_test.py --work_dir WORK_DIR_PATH  --checkpoint DETECTION_PATH  --version v1.0-test  --root data/nuScenes/v1.0-test    
 ```
 
 ### Test Set 
