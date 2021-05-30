@@ -13,7 +13,7 @@
 ### VoxelNet 
 | Model                 | Validation MAP  | Validation NDS  | Link          |
 |-----------------------|-----------------|-----------------|---------------|
-| [centerpoint_voxel_1440](voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py) | 58.5 | 66.3 | [URL](https://drive.google.com/drive/folders/1FOfCe9nWQrySUx42PlZyaKWAK2Or0sZQ?usp=sharing)  |
+| [centerpoint_voxel_1440](voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py) |59.6  | 66.8 | [URL](https://drive.google.com/drive/folders/1FOfCe9nWQrySUx42PlZyaKWAK2Or0sZQ?usp=sharing)  |
 
 
 
