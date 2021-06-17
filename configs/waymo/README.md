@@ -8,7 +8,7 @@
  
 ## Waymo 3D Detection 
 
-We provide training / validation configurations, pretrained models, and prediction files for all models in the paper. To access these pretrained models, please send us an [email](mailto:yintianwei@utexas.edu) with your name, institute, and a screenshot of the the Waymo dataset registration confirmation mail. Please send a second email if we don't get back to you in two days. We get a lot of emails every day and may accidentally miss yours.    
+We provide training / validation configurations, pretrained models, and prediction files for all models in the paper. To access these pretrained models, please send us an [email](mailto:yintianwei@utexas.edu) with your name, institute, a screenshot of the the Waymo dataset registration confirmation mail, and your intended usage. Please send a second email if we don't get back to you in two days. We get a lot of emails every day and may accidentally miss yours. Please note that Waymo open dataset is under strict non-commercial license.     
 
 ### One-stage VoxelNet 
 | Model   | Veh_L2 | Ped_L2 | Cyc_L2  | MAPH   | FPS  |
