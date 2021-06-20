@@ -20,6 +20,8 @@
 
 ## NEWS
 
+[2021-06-20] The real time version of CenterPoint ranked 2nd in the Waymo Real-time 3D detection challenge (72.8 mAPH / 57.1 ms). Please stay tuned for the updates. 
+
 [2021-04-13] Better nuScenes results by fixing sync-bn bug and using stronger augmentations. Plese refer to [nuScenes](configs/nusc/README.md).  
 
 [2021-02-28] CenterPoint is accepted at CVPR 2021 :fire:
