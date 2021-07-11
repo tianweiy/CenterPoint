@@ -20,7 +20,7 @@
 
 ## NEWS
 
-[2021-06-20] The real time version of CenterPoint ranked 2nd in the Waymo Real-time 3D detection challenge (72.8 mAPH / 57.1 ms). The corresponding techical report is available at [URL](https://drive.google.com/file/d/1wG1zPc2PyWgBIC-dLSFbxzeZ3FhA708_/view). Please stay tuned for the updates. 
+[2021-07-11] TBD
 
 [2021-04-13] Better nuScenes results by fixing sync-bn bug and using stronger augmentations. Plese refer to [nuScenes](configs/nusc/README.md).  
 
@@ -44,7 +44,7 @@ Three-dimensional objects are commonly represented as 3D boxes in a point-cloud.
 
 - **Simple:** Two sentences method summary: We use standard 3D point cloud encoder with a few convolutional layers in the head to produce a bird-eye-view heatmap and other dense regression outputs including the offset to centers in the previous frame. Detection is a simple local peak extraction with refinement, and tracking is a closest-distance matching.
 
-- **Fast and Accurate**: Our best single model achieves *71.9* mAPH on Waymo and *65.5* NDS on nuScenes while running at 11FPS+. 
+- **Fast and Accurate**: Our best single model achieves *72.6* mAPH on Waymo while running at 17.5FPS. 
 
 - **Extensible**: Simple replacement for anchor-based detector in your novel algorithms.
 
@@ -56,6 +56,7 @@ Three-dimensional objects are commonly represented as 3D boxes in a point-cloud.
 |---------|---------|--------|--------|---------|--------|-------|
 |VoxelNet | 1       |  71.9     |  67.0      |  68.2       |   69.0     |   13    | 
 |VoxelNet | 2       |  73.0     |  71.5      |  71.3       |   71.9     |  11     |
+| VoxelNet-RT |  3  |   74.6   |  71.9  |   71.3  |  72.6  |  17.5 | 
 
 #### 3D detection on Waymo domain adaptation test set
 
@@ -110,7 +111,7 @@ If you are interested in training CenterPoint on a new dataset, use CenterPoint 
 ### ToDo List
 - [ ] Support visualization with Open3D  
 - [ ] Colab demo 
-- [ ] Docker   
+- [x] Docker   
 
 ## License
 
