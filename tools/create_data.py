@@ -10,12 +10,13 @@ from det3d.datasets.waymo import waymo_common as waymo_ds
 
 def nuscenes_data_prep(root_path, version, nsweeps=10, filter_zero=True):
     nu_ds.create_nuscenes_infos(root_path, version=version, nsweeps=nsweeps, filter_zero=filter_zero)
-    create_groundtruth_database(
-        "NUSC",
-        root_path,
-        Path(root_path) / "infos_train_{:02d}sweeps_withvelo_filter_{}.pkl".format(nsweeps, filter_zero),
-        nsweeps=nsweeps,
-    )
+    if version == 'v1.0-trainval':
+        create_groundtruth_database(
+            "NUSC",
+            root_path,
+            Path(root_path) / "infos_train_{:02d}sweeps_withvelo_filter_{}.pkl".format(nsweeps, filter_zero),
+            nsweeps=nsweeps,
+        )
 
 def waymo_data_prep(root_path, split, nsweeps=1):
     waymo_ds.create_waymo_infos(root_path, split=split, nsweeps=nsweeps)
