@@ -13,6 +13,8 @@ from det3d.torchie.cnn import kaiming_init
 from torch import double, nn
 from det3d.models.losses.centernet_loss import FastFocalLoss, RegLoss
 from det3d.models.utils import Sequential
+from det3d.ops.iou3d_nms.iou3d_nms_utils import boxes_iou3d_gpu
+from ...core.utils.center_utils import _transpose_and_gather_feat
 from ..registry import HEADS
 import copy 
 try:
@@ -179,6 +181,7 @@ class CenterHead(nn.Module):
         share_conv_channel=64,
         num_hm_conv=2,
         dcn_head=False,
+        iou_weight=0
     ):
         super(CenterHead, self).__init__()
 
@@ -193,6 +196,7 @@ class CenterHead(nn.Module):
 
         self.crit = FastFocalLoss()
         self.crit_reg = RegLoss()
+        self.iou_weight = iou_weight
 
         self.box_n_dim = 9 if 'vel' in common_heads else 7  
         self.use_direction_classifier = False 
@@ -200,7 +204,7 @@ class CenterHead(nn.Module):
         if not logger:
             logger = logging.getLogger("CenterHead")
         self.logger = logger
-
+        
         logger.info(
             f"num_classes: {num_classes}"
         )
@@ -243,11 +247,50 @@ class CenterHead(nn.Module):
 
         return ret_dicts
 
+    @torch.no_grad()
+    def _iou_target(self, example, preds_dict, task_id, test_cfg):
+        batch, _, H, W = preds_dict['hm'].size()
+        ys, xs = torch.meshgrid([torch.arange(0, H), torch.arange(0, W)])
+        ys = ys.view(1, 1, H, W).repeat(batch, 1, 1, 1).to(preds_dict['hm'])
+        xs = xs.view(1, 1, H, W).repeat(batch, 1, 1, 1).to(preds_dict['hm'])
+
+        batch_det_dim = torch.exp(preds_dict['dim'])
+        batch_det_rots = preds_dict['rot'][:, 0:1, :, :]
+        batch_det_rotc = preds_dict['rot'][:, 1:2, :, :]
+        batch_det_reg = preds_dict['reg']
+        batch_det_hei = preds_dict['height']
+        batch_det_rot = torch.atan2(batch_det_rots, batch_det_rotc)
+        batch_det_xs = xs + batch_det_reg[:, 0:1, :, :]
+        batch_det_ys = ys + batch_det_reg[:, 1:2, :, :]
+        batch_det_xs = batch_det_xs * test_cfg.out_size_factor * test_cfg.voxel_size[0] + test_cfg.pc_range[0]
+        batch_det_ys = batch_det_ys * test_cfg.out_size_factor * test_cfg.voxel_size[1] + test_cfg.pc_range[1]
+        # (B, 7, H, W)
+        batch_box_preds = torch.cat([batch_det_xs, batch_det_ys, batch_det_hei, batch_det_dim, batch_det_rot], dim=1)
+        
+        batch_box_preds = _transpose_and_gather_feat(batch_box_preds, example['ind'][task_id])
+
+        target_box = example['anno_box'][task_id]
+        batch_gt_dim = torch.exp(target_box[..., 3:6])
+        batch_gt_reg = target_box[..., 0:2]
+        batch_gt_hei = target_box[..., 2:3]
+        batch_gt_rot = torch.atan2(target_box[..., -2:-1], target_box[..., -1:])
+        batch_gt_xs = _transpose_and_gather_feat(xs, example['ind'][task_id]) + batch_gt_reg[..., 0:1]
+        batch_gt_ys = _transpose_and_gather_feat(ys, example['ind'][task_id]) + batch_gt_reg[..., 1:2]
+        batch_gt_xs = batch_gt_xs * test_cfg.out_size_factor * test_cfg.voxel_size[0] + test_cfg.pc_range[0]
+        batch_gt_ys = batch_gt_ys * test_cfg.out_size_factor * test_cfg.voxel_size[1] + test_cfg.pc_range[1]
+        # (B, max_obj, 7)
+        batch_box_targets = torch.cat([batch_gt_xs, batch_gt_ys, batch_gt_hei, batch_gt_dim, batch_gt_rot], dim=-1)
+        
+        iou_targets = boxes_iou3d_gpu(batch_box_preds.reshape(-1, 7), batch_box_targets.reshape(-1, 7))[range(
+            batch_box_preds.reshape(-1, 7).shape[0]), range(batch_box_targets.reshape(-1, 7).shape[0])]
+
+        return iou_targets.reshape(batch, -1, 1)
+
     def _sigmoid(self, x):
         y = torch.clamp(x.sigmoid_(), min=1e-4, max=1-1e-4)
         return y
 
-    def loss(self, example, preds_dicts, **kwargs):
+    def loss(self, example, preds_dicts, test_cfg=None, **kwargs):
         rets = []
         for task_id, preds_dict in enumerate(preds_dicts):
             # heatmap focal loss
@@ -276,6 +319,12 @@ class CenterHead(nn.Module):
             loc_loss = (box_loss*box_loss.new_tensor(self.code_weights)).sum()
 
             loss = hm_loss + self.weight*loc_loss
+
+            if self.iou_weight > 0:
+                iou_targets = self._iou_target(example, preds_dict, task_id, test_cfg)
+                iou_loss = self.crit_reg(preds_dict['iou'], example['mask'][task_id], example['ind'][task_id], iou_targets)
+                loss += self.iou_weight * iou_loss.sum() 
+                ret['iou_loss'] = iou_loss.detach().cpu()
 
             ret.update({'loss': loss, 'hm_loss': hm_loss.detach().cpu(), 'loc_loss':loc_loss, 'loc_loss_elem': box_loss.detach().cpu(), 'num_positive': example['mask'][task_id].float().sum()})
 
@@ -389,6 +438,10 @@ class CenterHead(nn.Module):
             batch_rot = batch_rot.reshape(batch, H*W, 1)
             batch_dim = batch_dim.reshape(batch, H*W, 3)
             batch_hm = batch_hm.reshape(batch, H*W, num_cls)
+
+            # multiply together for the final score
+            batch_iou = torch.clamp(batch_iou.reshape(batch, H*W, 1), min=0, max=1)
+            batch_hm = batch_hm * torch.pow(batch_iou, test_cfg.get('cf_weight', 2))            
 
             ys, xs = torch.meshgrid([torch.arange(0, H), torch.arange(0, W)])
             ys = ys.view(1, H, W).repeat(batch, 1, 1).to(batch_hm)
