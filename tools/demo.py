@@ -108,7 +108,7 @@ def main():
     video_name = 'video.avi'
 
     images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
-    images.sort()
+    images.sort(key=lambda img_name: int(img_name.split('.')[0][4:]))
     frame = cv2.imread(os.path.join(image_folder, images[0]))
     height, width, layers = frame.shape
 
