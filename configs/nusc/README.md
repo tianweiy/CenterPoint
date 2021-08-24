@@ -25,7 +25,7 @@ These results are obtained before the bug fix.
 |-----------------------|------------------|-----------------|-----------------|---------------|
 | [centerpoint_voxel_1024](voxelnet/nusc_centerpoint_voxelnet_01voxel.py) | 16 | 56.4 | 64.8 | [URL](https://drive.google.com/drive/folders/1RyBD23GDfeU4AnRkea2BxlrosbKJmDKW?usp=sharing) |
 | [centerpoint_voxel_1440_dcn](voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn.py) | 11 | 57.1 | 65.4 | [URL](https://drive.google.com/drive/folders/1R7Ny4ia6NksL-FoltQKUtqrCB6DhX3TP?usp=sharing) |
-| [centerpoint_voxel_1440_dcn(flip)](voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn.py) | 3 | 59.5 | 67.4 | [URL](https://drive.google.com/drive/folders/1fAz0Hn8hLdmwYZh_JuMQj69O7uEHAjOh?usp=sharing) |
+| [centerpoint_voxel_1440_dcn(flip)](voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn_flip.py) | 3 | 59.5 | 67.4 | [URL](https://drive.google.com/drive/folders/1fAz0Hn8hLdmwYZh_JuMQj69O7uEHAjOh?usp=sharing) |
 
 
 ### PointPillars 
