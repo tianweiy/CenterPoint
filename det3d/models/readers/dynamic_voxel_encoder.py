@@ -8,7 +8,7 @@ import torch
 def voxelization(points, pc_range, voxel_size):    
     keep = (points[:, 0] >= pc_range[0]) & (points[:, 0] <= pc_range[3]) & \
         (points[:, 1] >= pc_range[1]) & (points[:, 1] <= pc_range[4]) & \
-            (points[:, 2] >= pc_range[2]) * (points[:, 2] <= pc_range[5])
+            (points[:, 2] >= pc_range[2]) & (points[:, 2] <= pc_range[5])
     points = points[keep, :]    
     coords = ((points[:, [2, 1, 0]] - pc_range[[2, 1, 0]]) /  voxel_size[[2, 1, 0]]).to(torch.int64)
     unique_coords, inverse_indices = coords.unique(return_inverse=True, dim=0)
