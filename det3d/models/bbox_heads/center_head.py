@@ -396,6 +396,7 @@ class CenterHead(nn.Module):
             batch_rotc = preds_dict['rot'][..., 1:2]
             batch_reg = preds_dict['reg']
             batch_hei = preds_dict['height']
+            batch_iou = preds_dict['iou']
 
             if double_flip:
                 batch_hm = batch_hm.mean(dim=1)
