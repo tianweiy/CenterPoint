@@ -124,7 +124,7 @@ def _create_gt_detection(infos, tracking=True):
     for idx in tqdm(range(len(infos))): 
         info = infos[idx]
 
-        obj = get_obj(info['path'])
+        obj = get_obj(info['anno_path'])
         annos = obj['objects']
         num_points_in_gt = np.array([ann['num_points'] for ann in annos])
         box3d = np.array([ann['box'] for ann in annos])
