@@ -59,9 +59,9 @@ class NuScenesDataset(PointCloudDataset):
         self._num_point_features = NuScenesDataset.NumPointFeatures
         self._name_mapping = general_to_detection
 
-        self.painted = kwargs.get('painted', False)
-        if self.painted:
-            self._num_point_features += 10 
+        self.virtual = kwargs.get('virtual', False)
+        if self.virtual:
+            self._num_point_features = 21 
 
         self.version = version
         self.eval_version = "detection_cvpr_2019"
@@ -175,7 +175,7 @@ class NuScenesDataset(PointCloudDataset):
             "calib": None,
             "cam": {},
             "mode": "val" if self.test_mode else "train",
-            "painted": self.painted 
+            "virtual": self.virtual 
         }
 
         data, _ = self.pipeline(res, info)
