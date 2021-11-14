@@ -19,17 +19,23 @@ class Reformat(object):
     def __call__(self, res, info):
         meta = res["metadata"]
         points = res["lidar"]["points"]
-        voxels = res["lidar"]["voxels"]
-
+        
         data_bundle = dict(
-            metadata=meta,
-            points=points,
-            voxels=voxels["voxels"],
-            shape=voxels["shape"],
-            num_points=voxels["num_points"],
-            num_voxels=voxels["num_voxels"],
-            coordinates=voxels["coordinates"]
+            metadata=meta
         )
+        if points is not None:
+            data_bundle.update(points=points)
+
+        if 'voxels' in res["lidar"]:
+            voxels = res["lidar"]["voxels"] 
+
+            data_bundle.update(
+                voxels=voxels["voxels"],
+                shape=voxels["shape"],
+                num_points=voxels["num_points"],
+                num_voxels=voxels["num_voxels"],
+                coordinates=voxels["coordinates"],
+            )
 
         if res["mode"] == "train":
             data_bundle.update(res["lidar"]["targets"])

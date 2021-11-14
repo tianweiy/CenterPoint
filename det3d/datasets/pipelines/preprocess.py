@@ -280,21 +280,31 @@ class AssignLabel(object):
         self.gaussian_overlap = assigner_cfg.gaussian_overlap
         self._max_objs = assigner_cfg.max_objs
         self._min_radius = assigner_cfg.min_radius
+        self.cfg = assigner_cfg
 
     def __call__(self, res, info):
         max_objs = self._max_objs
         class_names_by_task = [t.class_names for t in self.tasks]
         num_classes_by_task = [t.num_class for t in self.tasks]
 
-        # Calculate output featuremap size
-        grid_size = res["lidar"]["voxels"]["shape"] 
-        pc_range = res["lidar"]["voxels"]["range"]
-        voxel_size = res["lidar"]["voxels"]["size"]
-
-        feature_map_size = grid_size[:2] // self.out_size_factor
         example = {}
 
         if res["mode"] == "train":
+            # Calculate output featuremap size
+            if 'voxels' in res['lidar']:
+                # Calculate output featuremap size
+                grid_size = res["lidar"]["voxels"]["shape"] 
+                pc_range = res["lidar"]["voxels"]["range"]
+                voxel_size = res["lidar"]["voxels"]["size"]
+                feature_map_size = grid_size[:2] // self.out_size_factor
+            else:
+                pc_range = np.array(self.cfg['pc_range'], dtype=np.float32)
+                voxel_size = np.array(self.cfg['voxel_size'], dtype=np.float32)
+                grid_size = (pc_range[3:] - pc_range[:3]) / voxel_size
+                grid_size = np.round(grid_size).astype(np.int64)
+
+            feature_map_size = grid_size[:2] // self.out_size_factor
+
             gt_dict = res["lidar"]["annotations"]
 
             # reorganize the gt_dict by tasks

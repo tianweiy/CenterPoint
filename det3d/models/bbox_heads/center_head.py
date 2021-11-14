@@ -241,7 +241,7 @@ class CenterHead(nn.Module):
         for task in self.tasks:
             ret_dicts.append(task(x))
 
-        return ret_dicts
+        return ret_dicts, x
 
     def _sigmoid(self, x):
         y = torch.clamp(x.sigmoid_(), min=1e-4, max=1-1e-4)

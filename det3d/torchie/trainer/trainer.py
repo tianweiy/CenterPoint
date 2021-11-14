@@ -36,14 +36,13 @@ def example_to_device(example, device, non_blocking=False) -> dict:
     float_names = ["voxels", "bev_map"]
     for k, v in example.items():
         if k in ["anchors", "anchors_mask", "reg_targets", "reg_weights", "labels", "hm",
-                "anno_box", "ind", "mask", 'cat']:
+                "anno_box", "ind", "mask", 'cat', 'points']:
             example_torch[k] = [res.to(device, non_blocking=non_blocking) for res in v]
         elif k in [
             "voxels",
             "bev_map",
             "coordinates",
             "num_points",
-            "points",
             "num_voxels",
             "cyv_voxels",
             "cyv_num_voxels",

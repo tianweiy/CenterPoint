@@ -154,16 +154,17 @@ class TwoStageDetector(BaseDetector):
     def forward(self, example, return_loss=True, **kwargs):
         out = self.single_det.forward_two_stage(example, 
             return_loss, **kwargs)
-        if len(out) == 4:
-            one_stage_pred, bev_feature, voxel_feature, one_stage_loss = out 
-            example['voxel_feature'] = voxel_feature
-        elif len(out) == 3:
-            one_stage_pred, bev_feature, one_stage_loss = out 
+        if len(out) == 5:
+                one_stage_pred, bev_feature, voxel_feature, final_feature, one_stage_loss = out 
+                example['voxel_feature'] = voxel_feature
         else:
             raise NotImplementedError
 
         # N C H W -> N H W C 
-        example['bev_feature'] = bev_feature.permute(0, 2, 3, 1).contiguous()
+        if kwargs.get('use_final_feature', False):
+            example['bev_feature'] = final_feature.permute(0, 2, 3, 1).contiguous()
+        else:
+            example['bev_feature'] = bev_feature.permute(0, 2, 3, 1).contiguous()
         
         centers_vehicle_frame = self.get_box_center(one_stage_pred)
 
