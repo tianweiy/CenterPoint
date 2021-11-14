@@ -12,17 +12,16 @@ Modified from [det3d](https://github.com/poodarchu/Det3D/tree/56402d4761a5b73acd
 - [spconv](https://github.com/traveller59/spconv/commit/73427720a539caf9a44ec58abe3af7aa9ddb8e39) 
 
 #### Notes
-- spconv should be the specific version from links above
-- The spconv version after this commit will consume much more memory. 
-- A rule of thumb is that your pytorch cuda version must match the cuda version of your systsem for other cuda extensions to work properly. 
+- Please use spconv 1.x (exact version can be different from the link above). The 2.x version still has some bugs. 
+- Recent pytorch/spconv/cuda version will be faster and consumes less memory. 
 
 we have tested the following versions of OS and softwares:
 
 - OS: Ubuntu 16.04/18.04
-- Python: 3.6.5
-- PyTorch: 1.1
-- CUDA: 10.0
-- CUDNN: 7.5.0
+- Python: 3.6.5/3.7.10 
+- PyTorch: 1.1/1.9
+- spconv: 1.0/1.2.1
+- CUDA: 10.0/11.1
 
 ### Basic Installation 
 
