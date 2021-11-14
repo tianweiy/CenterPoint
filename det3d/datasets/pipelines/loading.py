@@ -25,7 +25,7 @@ def read_file(path, tries=2, num_point_feature=4, virtual=False):
         # WARNING: hard coded for nuScenes 
         points = np.fromfile(path, dtype=np.float32).reshape(-1, 5)[:, :num_point_feature]
         tokens = path.split('/')
-        seg_path = os.path.join(*tokens[:-2], tokens[-2]+"_SEG", tokens[-1]+'.pkl.npy')
+        seg_path = os.path.join(*tokens[:-2], tokens[-2]+"_VIRTUAL", tokens[-1]+'.pkl.npy')
         data_dict = np.load(seg_path, allow_pickle=True).item()
 
         # remove reflectance as other virtual points don't have this value  
