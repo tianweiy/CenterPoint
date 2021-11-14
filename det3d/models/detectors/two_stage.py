@@ -154,9 +154,12 @@ class TwoStageDetector(BaseDetector):
     def forward(self, example, return_loss=True, **kwargs):
         out = self.single_det.forward_two_stage(example, 
             return_loss, **kwargs)
+
         if len(out) == 5:
-                one_stage_pred, bev_feature, voxel_feature, final_feature, one_stage_loss = out 
-                example['voxel_feature'] = voxel_feature
+            one_stage_pred, bev_feature, voxel_feature, final_feature, one_stage_loss = out 
+            example['voxel_feature'] = voxel_feature
+        elif len(out) == 3:
+            one_stage_pred, bev_feature, one_stage_loss = out 
         else:
             raise NotImplementedError
 
