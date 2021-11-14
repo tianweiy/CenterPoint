@@ -61,7 +61,7 @@ class NuScenesDataset(PointCloudDataset):
 
         self.virtual = kwargs.get('virtual', False)
         if self.virtual:
-            self._num_point_features = 21 
+            self._num_point_features = 16 
 
         self.version = version
         self.eval_version = "detection_cvpr_2019"

@@ -65,6 +65,7 @@ class PillarFeatureNet(nn.Module):
         voxel_size=(0.2, 0.2, 4),
         pc_range=(0, -40, -3, 70.4, 40, 1),
         norm_cfg=None,
+        virtual=False
     ):
         """
         Pillar Feature Net.
@@ -104,6 +105,8 @@ class PillarFeatureNet(nn.Module):
             )
         self.pfn_layers = nn.ModuleList(pfn_layers)
 
+        self.virtual = virtual 
+
         # Need pillar (voxel) size and x/y offset in order to calculate pillar offset
         self.vx = voxel_size[0]
         self.vy = voxel_size[1]
@@ -113,8 +116,14 @@ class PillarFeatureNet(nn.Module):
     def forward(self, features, num_voxels, coors):
         device = features.device
 
-        dtype = features.dtype
+        if self.virtual:
+            virtual_point_mask = features[..., -2] == -1
+            virtual_points = features[virtual_point_mask]
+            virtual_points[..., -2] = 1
+            features[..., -2] = 0 
+            features[virtual_point_mask] = virtual_points
 
+        dtype = features.dtype
         # Find distance of x, y, and z from cluster center
         # features = features[:, :, :self.num_input]
         points_mean = features[:, :, :3].sum(dim=1, keepdim=True) / num_voxels.type_as(

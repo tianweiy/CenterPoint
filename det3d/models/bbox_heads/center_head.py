@@ -247,7 +247,7 @@ class CenterHead(nn.Module):
         y = torch.clamp(x.sigmoid_(), min=1e-4, max=1-1e-4)
         return y
 
-    def loss(self, example, preds_dicts, **kwargs):
+    def loss(self, example, preds_dicts, test_cfg, **kwargs):
         rets = []
         for task_id, preds_dict in enumerate(preds_dicts):
             # heatmap focal loss

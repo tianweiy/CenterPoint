@@ -46,7 +46,7 @@ class PointPillars(SingleStageDetector):
         )
 
         x = self.extract_feat(data)
-        preds = self.bbox_head(x)
+        preds, _ = self.bbox_head(x)
 
         if return_loss:
             return self.bbox_head.loss(example, preds)

@@ -28,24 +28,24 @@ def voxelization_virtual(points, pc_range, voxel_size):
     painted_points_mask = points[:, -2] == 0 
     virtual_points_mask = points[:, -2] == -1 
 
+    # remove zero padding for real points 
     real_points = points[real_points_mask][:, [0, 1, 2, 3, -1]]
-    painted_point = points[painted_points_mask] # [:, :-2] # remove timestamp as it is always zero 
-    virtual_point = points[virtual_points_mask] # [:, :-2] 
+    painted_point = points[painted_points_mask]  
+    virtual_point = points[virtual_points_mask] 
 
     padded_points = torch.zeros(len(points), 22, device=points.device, dtype=points.dtype)
 
-    # real points 
+    # real points will occupy channels 0 to 4 and -1 
     padded_points[:len(real_points), :5] = real_points
     padded_points[:len(real_points), -1] = 1 
 
-    # painted points 
+    # painted points will occupy channels 5 to 21 
     padded_points[len(real_points):len(real_points)+len(painted_point), 5:19] = painted_point[:, :-2]
     padded_points[len(real_points):len(real_points)+len(painted_point), 19] = painted_point[:, -1]
     padded_points[len(real_points):len(real_points)+len(painted_point), 20] = 1
     padded_points[len(real_points):len(real_points)+len(painted_point), 21] = 0
 
-
-    #  virtual points 
+    #  virtual points will occupy channels 5 to 21 
     padded_points[len(real_points)+len(painted_point):, 5:19] = virtual_point[:, :-2]
     padded_points[len(real_points)+len(painted_point):, 19] = virtual_point[:, -1]
     padded_points[len(real_points)+len(painted_point):, 20] = 0
