@@ -12,6 +12,7 @@ try:
     from nuscenes import NuScenes
     from nuscenes.utils import splits
     from nuscenes.utils.data_classes import Box
+    from nuscenes.utils.geometry_utils import transform_matrix
     from nuscenes.eval.detection.config import config_factory
     from nuscenes.eval.detection.evaluate import NuScenesEval
 except:
@@ -270,6 +271,84 @@ def get_sample_data(
 
     return data_path, box_list, cam_intrinsic
 
+CAM_CHANS = ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_RIGHT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_FRONT_LEFT']
+
+
+def get_lidar_to_image_transform(nusc, pointsensor,  camera_sensor):
+    tms = []
+    intrinsics = []  
+    cam_paths = [] 
+    for chan in CAM_CHANS:
+        cam = camera_sensor[chan]
+
+        # Points live in the point sensor frame. So they need to be transformed via global to the image plane.
+        # First step: transform the point-cloud to the ego vehicle frame for the timestamp of the sweep.
+        lidar_cs_record = nusc.get('calibrated_sensor', pointsensor['calibrated_sensor_token'])
+        car_from_lidar = transform_matrix(
+            lidar_cs_record["translation"], Quaternion(lidar_cs_record["rotation"]), inverse=False
+        )
+
+        # Second step: transform to the global frame.
+        lidar_poserecord = nusc.get('ego_pose', pointsensor['ego_pose_token'])
+        global_from_car = transform_matrix(
+            lidar_poserecord["translation"],  Quaternion(lidar_poserecord["rotation"]), inverse=False,
+        )
+
+        # Third step: transform into the ego vehicle frame for the timestamp of the image.
+        cam_poserecord = nusc.get('ego_pose', cam['ego_pose_token'])
+        car_from_global = transform_matrix(
+            cam_poserecord["translation"],
+            Quaternion(cam_poserecord["rotation"]),
+            inverse=True,
+        )
+
+        # Fourth step: transform into the camera.
+        cam_cs_record = nusc.get('calibrated_sensor', cam['calibrated_sensor_token'])
+        cam_from_car = transform_matrix(
+            cam_cs_record["translation"], Quaternion(cam_cs_record["rotation"]), inverse=True
+        )
+
+        tm = reduce(
+            np.dot,
+            [cam_from_car, car_from_global, global_from_car, car_from_lidar],
+        )
+
+        cam_path, _, intrinsic = nusc.get_sample_data(cam['token'])
+
+        tms.append(tm)
+        intrinsics.append(intrinsic)
+        cam_paths.append(cam_path )
+
+    return tms, intrinsics, cam_paths  
+
+def find_closet_camera_tokens(nusc, pointsensor, ref_sample):
+    lidar_timestamp = pointsensor["timestamp"]
+
+    min_cams = {} 
+
+    for chan in CAM_CHANS:
+        camera_token = ref_sample['data'][chan]
+
+        cam = nusc.get('sample_data', camera_token)
+        min_diff = abs(lidar_timestamp - cam['timestamp'])
+        min_cam = cam
+
+        for i in range(6):  # nusc allows at most 6 previous camera frames 
+            if cam['prev'] == "":
+                break 
+
+            cam = nusc.get('sample_data', cam['prev'])
+            cam_timestamp = cam['timestamp']
+
+            diff = abs(lidar_timestamp-cam_timestamp)
+
+            if (diff < min_diff):
+                min_diff = diff 
+                min_cam = cam 
+            
+        min_cams[chan] = min_cam 
+
+    return min_cams     
 
 
 def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10, filter_zero=True):
@@ -282,7 +361,7 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
     chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
 
     for sample in tqdm(nusc.sample):
-        """ Manual save info["sweeps"] """
+        """ Manual save info["sweeps"] """        
         # Get reference pose and timestamp
         # ref_chan == "LIDAR_TOP"
         ref_sd_token = sample["data"][ref_chan]
@@ -310,6 +389,17 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
             inverse=True,
         )
 
+        ref_cams = {}
+        # get all camera sensor data
+        for cam_chan in CAM_CHANS:
+            camera_token = sample['data'][cam_chan]
+            cam = nusc.get('sample_data', camera_token)
+
+            ref_cams[cam_chan] = cam 
+
+        # get camera info for point painting 
+        all_cams_from_lidar, all_cams_intrinsic, all_cams_path = get_lidar_to_image_transform(nusc, pointsensor=ref_sd_rec, camera_sensor=ref_cams)    
+
         info = {
             "lidar_path": ref_lidar_path,
             "cam_front_path": ref_cam_path,
@@ -319,6 +409,9 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
             "ref_from_car": ref_from_car,
             "car_from_global": car_from_global,
             "timestamp": ref_time,
+            "all_cams_from_lidar": all_cams_from_lidar,
+            "all_cams_intrinsic": all_cams_intrinsic,
+            "all_cams_path": all_cams_path
         }
 
         sample_data_token = sample["data"][chan]
@@ -332,13 +425,19 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
                         "sample_data_token": curr_sd_rec["token"],
                         "transform_matrix": None,
                         "time_lag": curr_sd_rec["timestamp"] * 0,
-                        # time_lag: 0,
+                        "all_cams_from_lidar": all_cams_from_lidar,
+                        "all_cams_intrinsic": all_cams_intrinsic,
+                        "all_cams_path": all_cams_path
                     }
                     sweeps.append(sweep)
                 else:
                     sweeps.append(sweeps[-1])
             else:
                 curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
+
+                # get nearest camera frame data 
+                cam_data = find_closet_camera_tokens(nusc, curr_sd_rec, ref_sample=sample)
+                cur_cams_from_lidar, cur_cams_intrinsic, cur_cams_path = get_lidar_to_image_transform(nusc, pointsensor=curr_sd_rec, camera_sensor=cam_data)   
 
                 # Get past pose
                 current_pose_rec = nusc.get("ego_pose", curr_sd_rec["ego_pose_token"])
@@ -374,6 +473,9 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
                     "global_from_car": global_from_car,
                     "car_from_current": car_from_current,
                     "time_lag": time_lag,
+                    "all_cams_from_lidar": cur_cams_from_lidar,
+                    "all_cams_intrinsic": cur_cams_intrinsic,
+                    "all_cams_path": cur_cams_path
                 }
                 sweeps.append(sweep)
 
@@ -381,9 +483,8 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10,
 
         assert (
             len(info["sweeps"]) == nsweeps - 1
-        ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
-        """ read from api """
-
+        )
+        
         if not test:
             annotations = [
                 nusc.get("sample_annotation", token) for token in sample["anns"]
