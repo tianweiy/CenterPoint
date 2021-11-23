@@ -49,7 +49,7 @@ class PointPillars(SingleStageDetector):
         preds, _ = self.bbox_head(x)
 
         if return_loss:
-            return self.bbox_head.loss(example, preds)
+            return self.bbox_head.loss(example, preds, self.test_cfg)
         else:
             return self.bbox_head.predict(example, preds, self.test_cfg)
 
@@ -85,6 +85,6 @@ class PointPillars(SingleStageDetector):
         boxes = self.bbox_head.predict(example, new_preds, self.test_cfg)
 
         if return_loss:
-            return boxes, bev_feature, self.bbox_head.loss(example, preds)
+            return boxes, bev_feature, self.bbox_head.loss(example, preds, self.test_cfg)
         else:
             return boxes, bev_feature, None 
