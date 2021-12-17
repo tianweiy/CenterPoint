@@ -12,6 +12,7 @@ from .roi_head_template import RoIHeadTemplate
 from det3d.core import box_torch_ops
 
 from ..registry import ROI_HEAD
+import torch 
 
 @ROI_HEAD.register_module
 class RoIHead(RoIHeadTemplate):
@@ -78,8 +79,10 @@ class RoIHead(RoIHeadTemplate):
             batch_dict['rois'] = targets_dict['rois']
             batch_dict['roi_labels'] = targets_dict['roi_labels']
             batch_dict['roi_features'] = targets_dict['roi_features']
+            batch_dict['roi_scores'] = targets_dict['roi_scores']
 
         # RoI aware pooling
+        batch_dict['roi_features'] = torch.cat([batch_dict['roi_features'], batch_dict['rois'], batch_dict['roi_scores'].unsqueeze(-1)], dim=-1)
         pooled_features = batch_dict['roi_features'].reshape(-1, 1,
             batch_dict['roi_features'].shape[-1]).contiguous()  # (BxN, 1, C)
 

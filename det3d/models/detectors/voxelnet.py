@@ -44,7 +44,7 @@ class VoxelNet(SingleStageDetector):
 
     def forward(self, example, return_loss=True, **kwargs):
         x, _ = self.extract_feat(example)
-        preds = self.bbox_head(x)
+        preds, _ = self.bbox_head(x)
 
         if return_loss:
             return self.bbox_head.loss(example, preds, self.test_cfg)

@@ -245,7 +245,7 @@ class CenterHead(nn.Module):
         for task in self.tasks:
             ret_dicts.append(task(x))
 
-        return ret_dicts
+        return ret_dicts, x
 
     @torch.no_grad()
     def _iou_target(self, example, preds_dict, task_id, test_cfg):

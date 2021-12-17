@@ -19,14 +19,14 @@ model = dict(
     type='TwoStageDetector',
     first_stage_cfg=dict(
         type="VoxelNet",
-        pretrained='work_dirs/waymo_centerpoint_voxelnet_3x/epoch_36.pth',
+        pretrained=None,
         reader=dict(
-            type="VoxelFeatureExtractorV3",
-            num_input_features=5
+            type="DynamicVoxelEncoder",
+            pc_range=[-75.2, -75.2, -2, 75.2, 75.2, 4],
+            voxel_size=[0.1, 0.1, 0.15],
         ),
         backbone=dict(
-            type="SpMiddleResNetFHD", num_input_features=5, ds_factor=8
-        ),
+            type="SpMiddleFHD", num_input_features=6, ds_factor=8),
         neck=dict(
             type="RPN",
             layer_nums=[5, 5],
@@ -43,8 +43,9 @@ model = dict(
             tasks=tasks,
             dataset='waymo',
             weight=2,
+            iou_weight=1,
             code_weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            common_heads={'reg': (2, 2), 'height': (1, 2), 'dim':(3, 2), 'rot':(2, 2)}, # (output_channel, num_conv)
+            common_heads={'reg': (2, 2), 'height': (1, 2), 'dim':(3, 2), 'rot':(2, 2), 'iou': (1, 2)}, # (output_channel, num_conv)
         ),
     ),
     second_stage_modules=[
@@ -57,7 +58,7 @@ model = dict(
     ],
     roi_head=dict(
         type="RoIHead",
-        input_channels=512*5,
+        input_channels=64*5+8,
         model_cfg=dict(
             CLASS_AGNOSTIC=True,
             SHARED_FC=[256, 256],
@@ -100,6 +101,9 @@ assigner = dict(
     gaussian_overlap=0.1,
     max_objs=500,
     min_radius=2,
+    pc_range=[-75.2, -75.2, -2, 75.2, 75.2, 4],
+    voxel_size=[0.1, 0.1, 0.15],
+
 )
 
 
@@ -108,7 +112,6 @@ train_cfg = dict(assigner=assigner)
 
 test_cfg = dict(
     post_center_limit_range=[-80, -80, -10.0, 80, 80, 10.0],
-    max_per_img=4096,
     nms=dict(
         use_rotate_nms=True,
         use_multi_class_nms=False,
@@ -116,22 +119,23 @@ test_cfg = dict(
         nms_post_max_size=500,
         nms_iou_threshold=0.7,
     ),
-    score_threshold=0.1,
+    score_threshold=0.03,
     pc_range=[-75.2, -75.2],
     out_size_factor=get_downsample_factor(model),
-    voxel_size=[0.1, 0.1]
+    voxel_size=[0.1, 0.1],
+    cf_weight=2
 )
 
 
 # dataset settings
 dataset_type = "WaymoDataset"
-nsweeps = 1
+nsweeps = 3
 data_root = "data/Waymo"
 
 db_sampler = dict(
     type="GT-AUG",
     enable=False,
-    db_info_path="data/Waymo/dbinfos_train_1sweeps_withvelo.pkl",
+    db_info_path="data/Waymo/dbinfos_train_3sweeps_withvelo_painted_final.pkl",
     sample_groups=[
         dict(VEHICLE=15),
         dict(PEDESTRIAN=10),
@@ -149,13 +153,14 @@ db_sampler = dict(
     ],
     global_random_rotation_range_per_object=[0, 0],
     rate=1.0,
-)  
+) 
 
 train_preprocessor = dict(
     mode="train",
     shuffle_points=True,
     global_rot_noise=[-0.78539816, 0.78539816],
     global_scale_noise=[0.95, 1.05],
+    global_translate_std=0.5,
     db_sampler=db_sampler,
     class_names=class_names,
 )
@@ -169,14 +174,13 @@ voxel_generator = dict(
     range=[-75.2, -75.2, -2, 75.2, 75.2, 4],
     voxel_size=[0.1, 0.1, 0.15],
     max_points_in_voxel=5,
-    max_voxel_num=[150000, 200000]
+    max_voxel_num=[250000, 400000],
 )
 
 train_pipeline = [
     dict(type="LoadPointCloudFromFile", dataset=dataset_type),
     dict(type="LoadPointCloudAnnotations", with_bbox=True),
     dict(type="Preprocess", cfg=train_preprocessor),
-    dict(type="Voxelization", cfg=voxel_generator),
     dict(type="AssignLabel", cfg=train_cfg["assigner"]),
     dict(type="Reformat"),
 ]
@@ -184,14 +188,13 @@ test_pipeline = [
     dict(type="LoadPointCloudFromFile", dataset=dataset_type),
     dict(type="LoadPointCloudAnnotations", with_bbox=True),
     dict(type="Preprocess", cfg=val_preprocessor),
-    dict(type="Voxelization", cfg=voxel_generator),
     dict(type="AssignLabel", cfg=train_cfg["assigner"]),
     dict(type="Reformat"),
 ]
 
-train_anno = "data/Waymo/infos_train_01sweeps_filter_zero_gt.pkl"
-val_anno = "data/Waymo/infos_val_01sweeps_filter_zero_gt.pkl"
-test_anno = "data/Waymo/infos_test_01sweeps_filter_zero_gt.pkl"
+train_anno = "data/Waymo/infos_trainval_03sweeps_filter_zero_gt.pkl"
+val_anno = "data/Waymo/infos_val_03sweeps_filter_zero_gt.pkl"
+test_anno = None
 
 data = dict(
     samples_per_gpu=4,
@@ -221,7 +224,6 @@ data = dict(
         info_path=test_anno,
         ann_file=test_anno,
         nsweeps=nsweeps,
-        test_mode=True,
         class_names=class_names,
         pipeline=test_pipeline,
     ),

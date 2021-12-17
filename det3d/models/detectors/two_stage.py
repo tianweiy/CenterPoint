@@ -154,7 +154,15 @@ class TwoStageDetector(BaseDetector):
     def forward(self, example, return_loss=True, **kwargs):
         out = self.single_det.forward_two_stage(example, 
             return_loss, **kwargs)
-        if len(out) == 4:
+
+        if len(out) == 5:
+            one_stage_pred, bev_feature, voxel_feature, final_feature, one_stage_loss = out 
+            if voxel_feature is not None:
+                example.update(voxel_feature)
+
+            # use a smaller final feature vector 
+            bev_feature = final_feature
+        elif len(out) == 4:
             one_stage_pred, bev_feature, voxel_feature, one_stage_loss = out 
             example['voxel_feature'] = voxel_feature
         elif len(out) == 3:
