@@ -13,7 +13,7 @@ Modified from [det3d](https://github.com/poodarchu/Det3D/tree/56402d4761a5b73acd
 
 #### Notes
 - Both Spconv 1.x and 2.x work.
-- Recent pytorch/spconv/cuda version will be faster and consumes less memory. 
+- Recent pytorch/spconv/cuda version will be faster and consume less memory. 
 - If you have problem installing apex, you can change the apex syncbn to torch's native sync bn at https://github.com/tianweiy/CenterPoint/blob/3fd0b8745b77575cb9810035aafc76796613f942/det3d/torchie/apis/train.py#L268.
 
 we have tested the following versions of OS and softwares:
