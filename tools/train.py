@@ -77,41 +77,46 @@ def main():
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
 
-    distributed = torch.cuda.device_count() > 1
+    distributed = False
+    if "WORLD_SIZE" in os.environ:
+        distributed = int(os.environ["WORLD_SIZE"]) > 1
 
-    if args.launcher == "pytorch":
-        torch.cuda.set_device(args.local_rank)
-        torch.distributed.init_process_group(backend="nccl", init_method="env://")
-        cfg.local_rank = args.local_rank
-    elif args.launcher == "slurm":
-        proc_id = int(os.environ["SLURM_PROCID"])
-        ntasks = int(os.environ["SLURM_NTASKS"])
-        node_list = os.environ["SLURM_NODELIST"]
-        num_gpus = torch.cuda.device_count()
-        cfg.gpus = num_gpus
-        torch.cuda.set_device(proc_id % num_gpus)
-        addr = subprocess.getoutput(
-            f"scontrol show hostname {node_list} | head -n1")
-        # specify master port
-        port = None
-        if port is not None:
-            os.environ["MASTER_PORT"] = str(port)
-        elif "MASTER_PORT" in os.environ:
-            pass  # use MASTER_PORT in the environment variable
-        else:
-            # 29500 is torch.distributed default port
-            os.environ["MASTER_PORT"] = "29501"
-        # use MASTER_ADDR in the environment variable if it already exists
-        if "MASTER_ADDR" not in os.environ:
-            os.environ["MASTER_ADDR"] = addr
-        os.environ["WORLD_SIZE"] = str(ntasks)
-        os.environ["LOCAL_RANK"] = str(proc_id % num_gpus)
-        os.environ["RANK"] = str(proc_id)
+    if distributed:
+        if args.launcher == "pytorch":
+            torch.cuda.set_device(args.local_rank)
+            torch.distributed.init_process_group(backend="nccl", init_method="env://")
+            cfg.local_rank = args.local_rank
+        elif args.launcher == "slurm":
+            proc_id = int(os.environ["SLURM_PROCID"])
+            ntasks = int(os.environ["SLURM_NTASKS"])
+            node_list = os.environ["SLURM_NODELIST"]
+            num_gpus = torch.cuda.device_count()
+            cfg.gpus = num_gpus
+            torch.cuda.set_device(proc_id % num_gpus)
+            addr = subprocess.getoutput(
+                f"scontrol show hostname {node_list} | head -n1")
+            # specify master port
+            port = None
+            if port is not None:
+                os.environ["MASTER_PORT"] = str(port)
+            elif "MASTER_PORT" in os.environ:
+                pass  # use MASTER_PORT in the environment variable
+            else:
+                # 29500 is torch.distributed default port
+                os.environ["MASTER_PORT"] = "29501"
+            # use MASTER_ADDR in the environment variable if it already exists
+            if "MASTER_ADDR" not in os.environ:
+                os.environ["MASTER_ADDR"] = addr
+            os.environ["WORLD_SIZE"] = str(ntasks)
+            os.environ["LOCAL_RANK"] = str(proc_id % num_gpus)
+            os.environ["RANK"] = str(proc_id)
 
-        dist.init_process_group(backend="nccl")
-        cfg.local_rank = int(os.environ["LOCAL_RANK"])
+            dist.init_process_group(backend="nccl")
+            cfg.local_rank = int(os.environ["LOCAL_RANK"])
 
-    cfg.gpus = dist.get_world_size()
+        cfg.gpus = dist.get_world_size()
+    else:
+        cfg.local_rank = args.local_rank 
 
     if args.autoscale_lr:
         cfg.lr_config.lr_max = cfg.lr_config.lr_max * cfg.gpus
