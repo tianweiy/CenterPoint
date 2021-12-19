@@ -40,8 +40,10 @@ class NuScenesDataset(PointCloudDataset):
         class_names=None,
         test_mode=False,
         version="v1.0-trainval",
+        load_interval=1,
         **kwargs,
     ):
+        self.load_interval = load_interval 
         super(NuScenesDataset, self).__init__(
             root_path, info_path, pipeline, test_mode=test_mode, class_names=class_names
         )
@@ -75,6 +77,8 @@ class NuScenesDataset(PointCloudDataset):
 
         with open(self._info_path, "rb") as f:
             _nusc_infos_all = pickle.load(f)
+
+        _nusc_infos_all = _nusc_infos_all[::self.load_interval]
 
         if not self.test_mode:  # if training
             self.frac = int(len(_nusc_infos_all) * 0.25)
