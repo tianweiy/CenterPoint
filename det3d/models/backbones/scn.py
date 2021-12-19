@@ -1,12 +1,26 @@
 import numpy as np
-import spconv
-from spconv import SparseConv3d, SubMConv3d
+try:
+    import spconv.pytorch as spconv 
+    from spconv.pytorch import ops
+    from spconv.pytorch import SparseConv3d, SubMConv3d
+except: 
+    import spconv 
+    from spconv import ops
+    from spconv import SparseConv3d, SubMConv3d
+
 from torch import nn
 from torch.nn import functional as F
 
 from ..registry import BACKBONES
 from ..utils import build_norm_layer
 
+def replace_feature(out, new_features):
+    if "replace_feature" in out.__dir__():
+        # spconv 2.x behaviour
+        return out.replace_feature(new_features)
+    else:
+        out.features = new_features
+        return out
 
 def conv3x3(in_planes, out_planes, stride=1, indice_key=None, bias=True):
     """3x3 convolution with padding"""
@@ -65,17 +79,17 @@ class SparseBasicBlock(spconv.SparseModule):
         identity = x
 
         out = self.conv1(x)
-        out.features = self.bn1(out.features)
-        out.features = self.relu(out.features)
+        out = replace_feature(out, self.bn1(out.features))
+        out = replace_feature(out, self.relu(out.features))
 
         out = self.conv2(out)
-        out.features = self.bn2(out.features)
+        out = replace_feature(out, self.bn2(out.features))
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out.features += identity.features
-        out.features = self.relu(out.features)
+        out = replace_feature(out, out.features + identity.features)
+        out = replace_feature(out, self.relu(out.features))
 
         return out
 
