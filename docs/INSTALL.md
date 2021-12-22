@@ -58,10 +58,17 @@ export PATH=/usr/local/cuda-10.0/bin:$PATH
 export CUDA_PATH=/usr/local/cuda-10.0
 export CUDA_HOME=/usr/local/cuda-10.0
 export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64:$LD_LIBRARY_PATH
-bash setup.sh 
+
+# Rotated NMS 
+cd ROOT_DIR/det3d/ops/iou3d_nms
+python setup.py build_ext --inplace
+
+# Deformable Convolution (Optional and only works with old torch versions e.g. 1.1)
+cd ROOT_DIR/det3d/ops/dcn
+python setup.py build_ext --inplace
 ```
 
-#### APEX
+#### APEX (Optional)
 
 ```bash
 git clone https://github.com/NVIDIA/apex
