@@ -6,7 +6,7 @@
 
 from torch import batch_norm
 import torch.nn as nn
-
+import torch 
 from .roi_head_template import RoIHeadTemplate
 
 from det3d.core import box_torch_ops
@@ -15,11 +15,12 @@ from ..registry import ROI_HEAD
 
 @ROI_HEAD.register_module
 class RoIHead(RoIHeadTemplate):
-    def __init__(self, input_channels, model_cfg, num_class=1, code_size=7, test_cfg=None):
+    def __init__(self, input_channels, model_cfg, num_class=1, code_size=7, add_box_param=False, test_cfg=None):
         super().__init__(num_class=num_class, model_cfg=model_cfg)
         self.model_cfg = model_cfg
         self.test_cfg = test_cfg 
         self.code_size = code_size
+        self.add_box_param = add_box_param
 
         pre_channel = input_channels
 
@@ -78,8 +79,12 @@ class RoIHead(RoIHeadTemplate):
             batch_dict['rois'] = targets_dict['rois']
             batch_dict['roi_labels'] = targets_dict['roi_labels']
             batch_dict['roi_features'] = targets_dict['roi_features']
+            batch_dict['roi_scores'] = targets_dict['roi_scores']
 
         # RoI aware pooling
+        if self.add_box_param:
+            batch_dict['roi_features'] = torch.cat([batch_dict['roi_features'], batch_dict['rois'], batch_dict['roi_scores'].unsqueeze(-1)], dim=-1)
+
         pooled_features = batch_dict['roi_features'].reshape(-1, 1,
             batch_dict['roi_features'].shape[-1]).contiguous()  # (BxN, 1, C)
 
