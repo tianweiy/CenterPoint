@@ -95,7 +95,7 @@ All results are tested on a Titan RTX GPU with batch size 1.
 - [CenterPoint-KITTI](https://github.com/tianweiy/CenterPoint-KITTI): Reimplementation of CenterPoint on the KITTI dataset 
 - [AFDet](https://arxiv.org/abs/2006.12671): another work inspired by CenterNet achieves good performance on KITTI/Waymo dataset. 
 - [mmdetection3d](https://github.com/open-mmlab/mmdetection3d/tree/master/configs/centerpoint): CenterPoint in mmdet framework. 
-- [CenterPointTensorRT](https://github.com/Abraham423/CenterPointTensorRT)
+- [CenterPointTensorRT](https://github.com/Abraham423/CenterPointTensorRT): CenterPoint-PointPillar for accelerated inference with TensorRT. 
 
 ## Use CenterPoint
 
