@@ -30,9 +30,7 @@
 
 [2021-02-28] CenterPoint is accepted at CVPR 2021 :fire:
 
-[2021-01-06] CenterPoint v0.1 is released. Without bells and whistles, we rank first among all Lidar-only methods on Waymo Open Dataset with a single model that runs at 11 FPS. Check out CenterPoint's model zoo for [Waymo](configs/waymo/README.md) and [nuScenes](configs/nusc/README.md). 
-
-[2020-12-11] 3 out of the top 4 entries in the recent NeurIPS 2020 [nuScenes 3D Detection challenge](https://www.nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) used CenterPoint. Congratualations to other participants and please stay tuned for more updates on nuScenes and Waymo soon. 
+[2021-01-06] CenterPoint v0.1 is released. Without bells and whistles, we rank first among all Lidar-only methods on Waymo Open Dataset with a single model. Check out CenterPoint's model zoo for [Waymo](configs/waymo/README.md) and [nuScenes](configs/nusc/README.md). 
 
 ## Contact
 Any questions or suggestions are welcome! 
