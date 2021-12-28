@@ -20,7 +20,11 @@
 
 ## NEWS
 
-[2021-06-20] The real time version of CenterPoint ranked 2nd in the Waymo Real-time 3D detection challenge (72.8 mAPH / 57.1 ms). The corresponding techical report is available at [URL](https://drive.google.com/file/d/1wG1zPc2PyWgBIC-dLSFbxzeZ3FhA708_/view). Please stay tuned for the updates. 
+[2021-12-27] We release a multimodal fusion approach for 3D detection [MVP](https://github.com/tianweiy/MVP). More research to come in Spring 2022.
+
+[2021-12-27] A TensorRT implementation (by [Wang Hao](https://github.com/Abraham423)) of CenterPoint-PointPillar is available at [CenterPointTensorRT](https://github.com/Abraham423/CenterPointTensorRT). ~60 FPS on Waymo Open Dataset.  
+
+[2021-06-20] The real time version of CenterPoint ranked 2nd in the Waymo Real-time 3D detection challenge (72.8 mAPH / 57.1 ms). The corresponding techical report is available at [URL](https://drive.google.com/file/d/1wG1zPc2PyWgBIC-dLSFbxzeZ3FhA708_/view). Code is at [URL](https://github.com/tianweiy/CenterPoint/tree/new_release)
 
 [2021-04-13] Better nuScenes results by fixing sync-bn bug and using stronger augmentations. Plese refer to [nuScenes](configs/nusc/README.md).  
 
@@ -93,6 +97,7 @@ All results are tested on a Titan RTX GPU with batch size 1.
 - [CenterPoint-KITTI](https://github.com/tianweiy/CenterPoint-KITTI): Reimplementation of CenterPoint on the KITTI dataset 
 - [AFDet](https://arxiv.org/abs/2006.12671): another work inspired by CenterNet achieves good performance on KITTI/Waymo dataset. 
 - [mmdetection3d](https://github.com/open-mmlab/mmdetection3d/tree/master/configs/centerpoint): CenterPoint in mmdet framework. 
+- [CenterPointTensorRT](https://github.com/Abraham423/CenterPointTensorRT)
 
 ## Use CenterPoint
 
