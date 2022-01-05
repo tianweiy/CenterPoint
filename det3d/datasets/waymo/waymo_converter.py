@@ -41,7 +41,7 @@ def convert(idx):
 
 def main(args):
     global fnames 
-    fnames = list(glob.glob(args.record_path))
+    fnames = sorted(list(glob.glob(args.record_path)))
 
     print("Number of files {}".format(len(fnames)))
 
