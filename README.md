@@ -20,7 +20,7 @@
 
 ## NEWS
 
-[2021-12-27] We release a multimodal fusion approach for 3D detection [MVP](https://github.com/tianweiy/MVP). More research to come in Spring 2022.
+[2021-12-27] We release a multimodal fusion approach for 3D detection [MVP](https://github.com/tianweiy/MVP). 
 
 [2021-12-27] A TensorRT implementation (by [Wang Hao](https://github.com/Abraham423)) of CenterPoint-PointPillar is available at [URL](https://github.com/Abraham423/CenterPointTensorRT). ~60 FPS on Waymo Open Dataset. There is also a nice onnx conversion [repo](https://github.com/CarkusL/CenterPoint) by [CarkusL](https://github.com/CarkusL).   
 
@@ -93,7 +93,7 @@ All results are tested on a Titan RTX GPU with batch size 1.
 
 - [ONCE_Benchmark](https://github.com/PointsCoder/ONCE_Benchmark): Implementation of CenterPoint on the ONCE dataset 
 - [CenterPoint-KITTI](https://github.com/tianweiy/CenterPoint-KITTI): Reimplementation of CenterPoint on the KITTI dataset 
-- [OpenPCDet](https://github.com/open-mmlab/OpenPCDet): Implementation of CenterPoint in OpenPCDet framework (with configs for Waymo dataset)
+- [OpenPCDet](https://github.com/open-mmlab/OpenPCDet): Implementation of CenterPoint in OpenPCDet framework (with configs for Waymo/nuScenes dataset)
 - [AFDet](https://arxiv.org/abs/2006.12671): another work inspired by CenterNet achieves good performance on KITTI/Waymo dataset
 - [mmdetection3d](https://github.com/open-mmlab/mmdetection3d/tree/master/configs/centerpoint): CenterPoint in mmdet framework
 - [CenterPointTensorRT](https://github.com/Abraham423/CenterPointTensorRT): CenterPoint-PointPillar for accelerated inference with TensorRT 
