@@ -38,6 +38,31 @@ open_mmlab_model_urls = {
     "kin400/nl3d_r50_f32s2_k400": "https://open-mmlab.s3.ap-northeast-2.amazonaws.com/pretrain/third_party/nl3d_r50_f32s2_k400-fa7e7caa.pth",  # noqa: E501
 }  # yapf: disable
 
+import torch.nn as nn 
+from typing import Set
+
+try:
+    import spconv.pytorch as spconv
+except:
+    import spconv as spconv
+
+def find_all_spconv_keys(model: nn.Module, prefix="") -> Set[str]:
+    """
+    Finds all spconv keys that need to have weight's transposed
+    from https://github.com/acivgin1/OpenPCDet/blob/8fc1a5d57bcb418d71d5118fb3df4b58d4ea0244/pcdet/utils/spconv_utils.py
+    """
+    found_keys: Set[str] = set()
+    for name, child in model.named_children():
+        new_prefix = f"{prefix}.{name}" if prefix != "" else name
+
+        if isinstance(child, spconv.conv.SparseConvolution):
+            new_prefix = f"{new_prefix}.weight"
+            found_keys.add(new_prefix)
+
+        found_keys.update(find_all_spconv_keys(child, prefix=new_prefix))
+
+    return found_keys
+
 
 def load_state_dict(module, state_dict, strict=False, logger=None):
     """Load state_dict into a module
@@ -46,7 +71,26 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
     shape_mismatch_pairs = []
 
     own_state = module.state_dict()
+
+    spconv_keys = find_all_spconv_keys(module)
+
     for name, param in state_dict.items():
+
+        if name in spconv_keys and name in own_state and own_state[name].shape != param.shape:
+            # from https://github.com/acivgin1/OpenPCDet/blob/8fc1a5d57bcb418d71d5118fb3df4b58d4ea0244/pcdet/models/detectors/detector3d_template.py
+            # with different spconv versions, we need to adapt weight shapes for spconv blocks
+            # adapt spconv weights from version 1.x to version 2.x if you used weights from spconv 1.x
+
+            param_native = param.transpose(-1, -2)  # (k1, k2, k3, c_in, c_out) to (k1, k2, k3, c_out, c_in)
+            if param_native.shape == own_state[name].shape:
+                param = param_native.contiguous()
+            else:
+                assert param.shape.__len__() == 5, 'currently only spconv 3D is supported'
+                param_implicit = param.permute(4, 0, 1, 2, 3)  # (k1, k2, k3, c_in, c_out) to (c_out, k1, k2, k3, c_in)
+                if param_implicit.shape == own_state[name].shape:
+                    param = param_implicit.contiguous()
+
+
         # a hacky fixed to load a new voxelnet 
         if name not in own_state:
             unexpected_keys.append(name)
