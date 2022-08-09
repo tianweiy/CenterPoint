@@ -54,7 +54,7 @@ To provide richer input information and enable a more reasonable velocity estima
 | Model   | Veh_L2 | Ped_L2 | Cyc_L2  | MAPH   | FPS  |
 |---------|--------|--------|---------|--------|------------|
 | [centerpoint_pillar](pp/waymo_centerpoint_pp_two_pfn_stride1_3x.py) | 65.5 | 55.1 | 60.2 | 60.3 | 19 | 
-| [centerpoint_pillar_two_stage](pp/two_stage/waymo_centerpoint_pp_two_cls_two_pfn_stride1_two_stage_bev_6epoch.py) | 66.7 | 55.9 | 61.7 | 61.4 | 16 | 
+| [centerpoint_pillar_two_stage](pp/two_stage/waymo_centerpoint_pp_two_pfn_stride1_two_stage_bev_6epoch.py) | 66.7 | 55.9 | 61.7 | 61.4 | 16 | 
 
 For PointPillars, we notice a 1.5 mAPH drop when converting from two class model to three class model. You can refer to [ONE_STAGE](pp/waymo_centerpoint_pp_two_cls_two_pfn_stride1_3x.py) and [TWO_STAGE](pp/two_stage/waymo_centerpoint_pp_two_cls_two_pfn_stride1_two_stage_bev_6epoch.py) configs to reproduce the two class result.
 
