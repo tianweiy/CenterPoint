@@ -93,7 +93,7 @@ class FrozenBatchNorm2d(nn.Module):
         https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/batchnorm.py
         """
         bn_module = nn.modules.batchnorm
-        bn_module = (bn_module.BatchNorm2d, bn_module.SyncBatchNorm)
+        bn_module = (bn_module.BatchNorm1d, bn_module.BatchNorm2d, bn_module.SyncBatchNorm)
         res = module
         if isinstance(module, bn_module):
             res = cls(module.num_features)
