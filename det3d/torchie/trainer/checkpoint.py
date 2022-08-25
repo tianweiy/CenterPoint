@@ -163,7 +163,7 @@ def get_torchvision_models():
     return model_urls
 
 
-def load_checkpoint(model, filename, map_location=None, strict=False, logger=None):
+def load_checkpoint(model, filename, map_location='cpu', strict=False, logger=None):
     """Load checkpoint from a file or URI.
 
     Args:
