@@ -35,7 +35,7 @@
 ## Contact
 Any questions or suggestions are welcome! 
 
-Tianwei Yin [yintianwei@utexas.edu](mailto:yintianwei@utexas.edu) 
+Tianwei Yin [tianweiy@mit.edu](mailto:tianweiy@mit.edu) 
 Xingyi Zhou [zhouxy@cs.utexas.edu](mailto:zhouxy@cs.utexas.edu)
 
 ## Abstract
