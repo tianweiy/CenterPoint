@@ -110,8 +110,8 @@ Organize your dataset as follows
                             |── infos_test_10sweeps_withvelo.pkl <-- test info
 ```
 
-Download the ```centerpoint_voxel_1440_dcn_flip``` [here](https://drive.google.com/drive/folders/1uU_wXuNikmRorf_rPBbM0UTrW54ztvMs?usp=sharing), save it into ```work_dirs/nusc_0075_dcn_flip_track```, then run the following commands in the main folder to get detection prediction 
+Download the ```centerpoint_voxel_1440_flip``` [here](https://mitprod-my.sharepoint.com/:f:/g/personal/tianweiy_mit_edu/EhgzjwV2EghOnHFKyRgSadoBr2kUo7yPu52N-I3dG3c5dA?e=EP9G6L), save it into ```work_dirs/nusc_0075_flip```, then run the following commands in the main folder to get detection prediction 
 
 ```bash
-python tools/dist_test.py configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn_flip.py --work_dir work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset  --checkpoint work_dirs/nusc_0075_dcn_flip_track/voxelnet_converted.pth  --testset --speed_test 
+python tools/dist_test.py configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z_flip.py --work_dir work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset  --checkpoint work_dirs/nusc_0075_flip/voxelnet_converted.pth  --testset 
 ```
