@@ -15,7 +15,7 @@
 |-----------------------|-----------------|-----------------|---------------|
 | [centerpoint_voxel_1440](voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py) |59.6  | 66.8 | [URL](https://mitprod-my.sharepoint.com/:f:/g/personal/tianweiy_mit_edu/EhgzjwV2EghOnHFKyRgSadoBr2kUo7yPu52N-I3dG3c5dA?e=a9MdhX)  |
 
-
+Please refer to [LINK](https://github.com/tianweiy/CenterPoint/issues/249) for centerpoint detection predicitons on nuScenes train/val/test sets.
 
 ### VoxelNet(depreacted) 
 
