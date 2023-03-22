@@ -142,7 +142,7 @@ test_pipeline = [
 
 train_anno = "data/Waymo/infos_train_02sweeps_filter_zero_gt.pkl"
 val_anno = "data/Waymo/infos_val_02sweeps_filter_zero_gt.pkl"
-test_anno = None
+test_anno = "data/Waymo/infos_test_02sweeps_filter_zero_gt.pkl"
 
 data = dict(
     samples_per_gpu=4,
