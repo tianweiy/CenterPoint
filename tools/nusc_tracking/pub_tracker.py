@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 from track_utils import greedy_assignment
+from scipy.optimize import linear_sum_assignment as linear_assignment
 import copy 
 import importlib
 import sys 
@@ -95,7 +96,8 @@ class PubTracker(object):
       dist = dist  + invalid * 1e18
       if self.hungarian:
         dist[dist > 1e18] = 1e18
-        matched_indices = linear_assignment(copy.deepcopy(dist))
+        matched_indices = np.array(linear_assignment(copy.deepcopy(dist)))
+        matched_indices = matched_indices.transpose()
       else:
         matched_indices = greedy_assignment(copy.deepcopy(dist))
     else:  # first few frame
