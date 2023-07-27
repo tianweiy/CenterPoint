@@ -16,7 +16,7 @@ class SWTracker():
         assert sum(self.solver_flg.values()) == 1
         self.sliding_window_len = 2
         assert self.sliding_window_len >= 2
-        self.plot_flg = True
+        self.plot_flg = False
         self.work_dir = work_dir
         self.frame_counter = 0
 
@@ -481,62 +481,85 @@ class SWTracker():
             matched_indices (np.array[Px2]): Detection and track indices for
                 P assigned matching pairs.
         """
-
+        # TODO: vectorize this function
         # Get solution all detection indices and track last detection indices
         sol_det_ind = x_det_ind[ip_x_sol == 1, :] -1 # -1 for 0-indexing
-        tracks_last_detection_ids = np.array(
-            [track['detection_ids'][-track['age']] for track in tracks])
-        tracks_age = np.array([track['age'] for track in tracks])
+        # tracks_last_detection_ids = np.array(
+        #     [track['detection_ids'][-track['age']] for track in tracks])
+        # tracks_age = np.array([track['age'] for track in tracks])
 
-        # Loop through past frames and get matched indices to current frame
+        # Loop through tracks and get matched indices to current frame
         matched_indices = np.zeros((0, 2), dtype=int)
-        for age in np.sort(np.unique(tracks_age)):
-            if age > self.sw_dets['length']-1:
-                break
+        for track_ind, track in enumerate(tracks):
+            if track['age'] >= self.sliding_window_len:
+                continue
+            # Get track last detection ID
+            track_last_det_id = track['detection_ids'][-track['age']]
 
-            # Get track IDs and detection IDs for given age
-            tracks_age_indices = np.where(tracks_age == age)
-            tracks_age_det_ids = tracks_last_detection_ids[tracks_age_indices]
+            # Get solution detection IDs for given track
+            sol_det_ids = sol_det_ind[:, -1-track['age']]
 
-            # Get solution detection IDs for given age
-            sol_age_det_ids = sol_det_ind[:, -1-age]
-            sol_cur_det_ids = sol_det_ind[:, -1]
+            # Get matched detection indices for given track
+            matched_det_ind = np.flatnonzero(sol_det_ids == track_last_det_id)
+            if matched_det_ind.size == 1:
+                det_ind = sol_det_ind[matched_det_ind[0], -1]
+                matched_indices = np.vstack((matched_indices,
+                                             np.array([det_ind, track_ind])))
+            elif matched_det_ind.size > 1:
+                ValueError('Multiple matches found for track ID:'
+                           + str(track['tracking_id']))
 
-            # Match detection indices of tracks and solution for given age
-            _, track_ind, sol_ind = np.intersect1d(
-                tracks_age_det_ids, sol_age_det_ids, return_indices=True)
+        # # Loop through past frames and get matched indices to current frame
+        # matched_indices = np.zeros((0, 2), dtype=int)
+        # for age in np.sort(np.unique(tracks_age)):
+        #     if age > self.sw_dets['length']-1:
+        #         break
 
-            # Concatenate track and current detection indices
-            matched_age_track_ids = tracks_age_det_ids[track_ind]
-            matched_age_det_ids = sol_cur_det_ids[sol_ind]
-            matched_age_indices = np.stack((matched_age_det_ids,
-                                            matched_age_track_ids), axis=1)
-            matched_indices = np.concatenate(
-                (matched_indices, matched_age_indices), axis=0)
+        #     # Get track IDs and detection IDs for given age
+        #     tracks_age_indices = np.where(tracks_age == age)
+        #     tracks_age_det_ids = tracks_last_detection_ids[tracks_age_indices]
+
+        #     # Get solution detection IDs for given age
+        #     sol_age_det_ids = sol_det_ind[:, -1-age]
+        #     sol_cur_det_ids = sol_det_ind[:, -1]
+
+        #     # Match detection indices of tracks and solution for given age
+        #     _, track_ind, sol_ind = np.intersect1d(
+        #         tracks_age_det_ids, sol_age_det_ids, return_indices=True)
+
+        #     # Concatenate track and current detection indices
+        #     matched_age_track_ids = tracks_age_det_ids[track_ind]
+        #     matched_age_det_ids = sol_cur_det_ids[sol_ind]
+        #     matched_age_indices = np.stack((matched_age_det_ids,
+        #                                     matched_age_track_ids), axis=1)
+        #     matched_indices = np.concatenate(
+        #         (matched_indices, matched_age_indices), axis=0)
 
         # remove skipped detection and duplicate tracks (keep most recent)
         matched_indices = matched_indices[matched_indices[:, 0] != -1]
         _, unique_ind = np.unique(matched_indices[:, 1], return_index=True)
         matched_indices = matched_indices[unique_ind]
 
-        # sort matched indices by detection index
-        sort_index_array = np.argsort(matched_indices[:, 0])
-        matched_indices = matched_indices[sort_index_array]
 
         # checks
-        dist_sol = x_states['dist_max'][ip_x_sol == 1][sort_index_array]
-        dist_dets = np.array(
+        dist_sol = x_states['dist_max'][ip_x_sol == 1]
+        dist_det = np.array(
             [np.sqrt((self.sw_dets['pos_x'][-1][det_inds[-1]]
                       - self.sw_dets['pos_x'][-2][det_inds[-2]])**2 +
                      (self.sw_dets['pos_y'][-1][det_inds[-1]]
                       - self.sw_dets['pos_y'][-2][det_inds[-2]])**2)
             for det_inds in sol_det_ind])
-        dist_matches = np.array(
+        dist_mat = np.array(
             [np.sqrt((tracks[match[1]]['translation'][0]
                       - self.sw_dets['pos_x'][-1][match[0]])**2 +
                      (tracks[match[1]]['translation'][1]
                       - self.sw_dets['pos_y'][-1][match[0]])**2)
             for match in matched_indices])
+
+        # sort matched indices by detection index
+        sort_index_array = np.argsort(matched_indices[:, 0])
+        matched_indices = matched_indices[sort_index_array]
+
         return matched_indices
 
 

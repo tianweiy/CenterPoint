@@ -1,23 +1,22 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
 import os
-import sys 
 import json
-import numpy as np
 import time
-import copy
 import argparse
-import copy
-import json
-import os
 import numpy as np
 from pub_tracker import PubTracker as Tracker
 from nuscenes import NuScenes
-import json 
-import time
 from nuscenes.utils import splits
+from nuscenes.eval.common.config import config_factory as track_configs
+from nuscenes.eval.tracking.evaluate import TrackingEval 
+from nuscenes.utils.data_classes import LidarPointCloud, Box
+from nuscenes.utils.geometry_utils import view_points, transform_matrix
+from pyquaternion import Quaternion
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import matplotlib.patches as mpatches
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Tracking Evaluation")
@@ -48,21 +47,21 @@ def save_first_frame():
 
     frames = []
     for sample in nusc.sample:
-        scene_name = nusc.get("scene", sample['scene_token'])['name'] 
+        scene_name = nusc.get("scene", sample['scene_token'])['name']
         if scene_name not in scenes:
-            continue 
+            continue
 
         timestamp = sample["timestamp"] * 1e-6
         token = sample["token"]
         frame = {}
         frame['token'] = token
-        frame['timestamp'] = timestamp 
+        frame['timestamp'] = timestamp
 
         # start of a sequence
         if sample['prev'] == '':
-            frame['first'] = True 
+            frame['first'] = True
         else:
-            frame['first'] = False 
+            frame['first'] = False
         frames.append(frame)
 
     # del nusc
@@ -70,7 +69,7 @@ def save_first_frame():
     res_dir = os.path.join(args.work_dir)
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
-    
+
     with open(os.path.join(args.work_dir, 'frames_meta.json'), "w") as f:
         json.dump({'frames': frames}, f)
 
@@ -107,7 +106,7 @@ def main(nusc):
             tracker.reset()
             last_time_stamp = frames[i]['timestamp']
 
-        time_lag = (frames[i]['timestamp'] - last_time_stamp) 
+        time_lag = frames[i]['timestamp'] - last_time_stamp
         last_time_stamp = frames[i]['timestamp']
 
         preds = predictions[token]
@@ -117,7 +116,7 @@ def main(nusc):
 
         for item in outputs:
             if item['active'] == 0:
-                continue 
+                continue
             nusc_anno = {
                 "sample_token": token,
                 "translation": item['translation'],
@@ -139,7 +138,7 @@ def main(nusc):
     del nusc
     end = time.time()
 
-    second = (end-start) 
+    second = end-start
 
     speed=size / second
     print("The speed is {} FPS".format(speed))
@@ -172,15 +171,6 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
                  eval_filter=True, with_gt_boxes=True, with_map=True,
                  with_point_cloud=False, with_track_boxes=True,
                  with_det_boxes=False, conf_thresh=0.1, verbose=False):
-
-    from nuscenes.eval.common.config import config_factory as track_configs
-    import matplotlib.pyplot as plt
-    from nuscenes.utils.data_classes import LidarPointCloud, Box
-    from pyquaternion import Quaternion
-    from nuscenes.utils.geometry_utils import view_points, transform_matrix
-    from matplotlib.lines import Line2D
-    import matplotlib.patches as mpatches
-
     # Styles
     style = 'debug'
     if style == 'paper':
@@ -239,10 +229,12 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
         ref_to_ego = transform_matrix(translation=cs_record['translation'],
                                         rotation=Quaternion(cs_record["rotation"]))
 
-        # Compute rotation between 3D vehicle pose and "flat" vehicle pose (parallel to global z plane)
+        # Compute rotation between 3D vehicle pose and "flat" vehicle pose 
+        # (parallel to global z plane)
         ego_yaw = Quaternion(pose_record['rotation']).yaw_pitch_roll[0]
         rotation_vehicle_flat_from_vehicle = np.dot(
-            Quaternion(scalar=np.cos(ego_yaw / 2), vector=[0, 0, np.sin(ego_yaw / 2)]).rotation_matrix,
+            Quaternion(scalar=np.cos(ego_yaw / 2), 
+                       vector=[0, 0, np.sin(ego_yaw / 2)]).rotation_matrix,
             Quaternion(pose_record['rotation']).inverse.rotation_matrix)
         vehicle_flat_from_vehicle = np.eye(4)
         vehicle_flat_from_vehicle[:3, :3] = rotation_vehicle_flat_from_vehicle
@@ -250,7 +242,7 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
 
         # Plot point cloud
         points = view_points(pc.points[:3, :], viewpoint, normalize=False)
-        dists = np.sqrt(np.sum(pc.points[:2, :] ** 2, axis=0))
+        # dists = np.sqrt(np.sum(pc.points[:2, :] ** 2, axis=0))
         # colors = np.minimum(1, dists / axes_limit / np.sqrt(2))
         colors = 'lightgray'
         point_scale = 0.01
@@ -339,7 +331,8 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
                 track_history[:,i] = np.dot(ego_quat.inverse.rotation_matrix,
                                             track_history[:,i])
 
-            ax.plot(track_history[0,:], track_history[1,:], 'o-', c=c, ms=plot_ms, linewidth=plot_linewidth)
+            ax.plot(track_history[0,:], track_history[1,:], 'o-', c=c, 
+                    ms=plot_ms, linewidth=plot_linewidth)
             # ax.scatter(track_history[0,-1], track_history[1,-1], c=c, s=2)
 
     # Plot format and save
@@ -417,10 +410,6 @@ def filter_boxes(boxes, max_dist, track_histories=None, num_pts=None):
 
 
 def eval(res_path, eval_set="val", output_dir=None, root_path=None):
-    from nuscenes.eval.tracking.evaluate import TrackingEval 
-    from nuscenes.eval.common.config import config_factory as track_configs
-
-    
     cfg = track_configs("tracking_nips_2019")
     nusc_eval = TrackingEval(
         config=cfg,
