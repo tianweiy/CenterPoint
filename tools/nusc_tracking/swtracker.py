@@ -1,4 +1,3 @@
-"""This module does blah blah."""
 import time
 import numpy as np
 import scipy.sparse as sp
@@ -8,7 +7,7 @@ except ImportError:
     pass
 
 class SWTracker():
-    """ Sliding window tracker class."""
+    """Sliding window tracker class."""
     def __init__(self, work_dir=None):
         self.cost_flg = {"dist_max": False, "dist_avg": False, "dist_sum": False,
                          "llr": True, "learned": False}

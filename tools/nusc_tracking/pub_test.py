@@ -187,7 +187,7 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
         text_fontsize = 10
         legend_fontsize = 'large'
         plot_linewidth = 1.5
-        plot_ms == 3.0
+        plot_ms = 3.0
     elif style == 'debug':
         text_fontsize = 3
         legend_fontsize = 'small'
@@ -434,10 +434,10 @@ def eval(res_path, eval_set="val", output_dir=None, root_path=None):
     metrics_summary = nusc_eval.main()
 
 
-def test_time():
+def test_time(nusc):
     speeds = []
     for i in range(3):
-        speeds.append(main())
+        speeds.append(main(nusc))
 
     print("Speed is {} FPS".format( max(speeds)  ))
 
