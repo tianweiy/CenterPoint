@@ -14,10 +14,11 @@ class SWTracker():
         assert sum(self.cost_flg.values()) == 1
         self.solver_flg = {"gurobi": False, "greedy": True}
         assert sum(self.solver_flg.values()) == 1
-        self.sliding_window_len = 2
-        assert self.sliding_window_len >= 2
+        self.sw_len_max = 3
+        assert self.sw_len_max >= 2
         self.plot_flg = False
         self.work_dir = work_dir
+        self.use_inactive_tracks = False
         self.frame_counter = 0
 
         # 99.9 percentile of l2 velocity error distribution TODO: tuning
@@ -38,11 +39,12 @@ class SWTracker():
         self.sw_dets = {"delta_t": [], "pos_x": [], "pos_y": [], "vel_x": [],
                         "vel_y": [], "class_id": [], "score": [], "max_vel": [],
                         "num_dets": np.array([], dtype=np.int32), "indices": [],
-                        "length": 0}
+                        }
+        self.sw_len_curr = 0
         self.ip_sol = {}
 
 
-    def append_detections(self, detections, time_lag):
+    def expand_window(self, detections, time_lag):
         ''' 
         Append detections to sliding window history.
         Args:
@@ -60,7 +62,6 @@ class SWTracker():
                 label_preds (int): Predicted class label.
             time_lag (float): Timestep from last assignment to current one.
         '''
-        # detections = [det for det in detections if det['detection_score'] > 0.1]
         self.sw_dets['delta_t'].append(time_lag)
         self.sw_dets['pos_x'].append(
             np.array([det['translation'][0] for det in detections], np.float32))
@@ -74,17 +75,83 @@ class SWTracker():
             np.array([det['label_preds'] for det in detections], np.int32))
         self.sw_dets['score'].append(
             np.array([det['detection_score'] for det in detections], np.float32))
-
         self.sw_dets['max_vel'].append(
             np.array([self.class_vel_limit[det['detection_name']]
                 for det in detections], np.float32))
+        self.sw_dets['indices'].append(np.arange(len(detections) + 1))
+
         self.sw_dets['num_dets'] = np.append(
             self.sw_dets['num_dets'], len(detections))
-        self.sw_dets['indices'].append(
-            np.arange(self.sw_dets['num_dets'][-1] + 1))
-        if self.sw_dets['length'] < self.sliding_window_len:
-            self.sw_dets['length'] += 1
+        if self.sw_len_curr < self.sw_len_max:
+            self.sw_len_curr += 1
         self.frame_counter += 1
+
+
+    def contract_window(self, tracks):
+        ''' 
+        Remove and insert inactive tracks at beginning of sliding window.
+        Args:
+            tracks (list[dict]): List of track dictionaries.
+                sample_token (str): Sample token.
+                translation (np.array): Translation in meters with shape (3).
+                size (np.array): Size in meters with shape (3).
+                rotation (np.array): Rotation quaternion with shape (4).
+                velocity (np.array): Velocity in meters with shape (3).
+                detection_name (str): Predicted class name.
+                detection_score (float): Predicted class score.
+                attribute_name (str): Predicted attribute name.
+                ct (np.array): Center position in meters with shape (2).
+                tracking (np.array): Tracking state with shape (2).
+                label_preds (int): Predicted class label.
+                tracking_id (int): Tracking ID.
+                age (int): Age of track.
+                active (int): Track is active or not.
+                detection_ids (list[int]): List of track history detection IDs.
+        '''
+        # Contract window # TODO: most efficient way to pop list and aray?
+        if self.sw_len_curr > self.sw_len_max:
+            self.sw_dets['delta_t'].pop(0)
+            self.sw_dets['pos_x'].pop(0)
+            self.sw_dets['pos_y'].pop(0)
+            self.sw_dets['vel_x'].pop(0)
+            self.sw_dets['vel_y'].pop(0)
+            self.sw_dets['class_id'].pop(0)
+            self.sw_dets['score'].pop(0)
+            self.sw_dets['max_vel'].pop(0)
+            self.sw_dets['indices'].pop(0)
+            self.sw_dets['num_dets'] = self.sw_dets['num_dets'][1:]
+
+        # Replace detections with tracks at beginning of window
+        if self.use_inactive_tracks:
+            pos_x = []
+            pos_y = []
+            vel_x = []
+            vel_y = []
+            class_id = []
+            score = []
+            max_vel = []
+            for track in tracks:
+                if track['age'] >= self.sw_len_curr - 1:
+                    time_since_window = track['t_age'] - np.sum(
+                        self.sw_dets['delta_t'][1:-1])
+                    pos_x.append(track['translation'][0] 
+                                 - track['velocity'][0]*time_since_window)
+                    pos_y.append(track['translation'][1]
+                                 - track['velocity'][1]*time_since_window)
+                    vel_x.append(track['velocity'][0])
+                    vel_y.append(track['velocity'][1])
+                    class_id.append(track['label_preds'])
+                    score.append(track['detection_score'])
+                    max_vel.append(self.class_vel_limit[track['detection_name']])
+            self.sw_dets['pos_x'][0] = np.array(pos_x, np.float32)
+            self.sw_dets['pos_y'][0] = np.array(pos_y, np.float32)
+            self.sw_dets['vel_x'][0] = np.array(vel_x, np.float32)
+            self.sw_dets['vel_y'][0] = np.array(vel_y, np.float32)
+            self.sw_dets['class_id'][0] = np.array(class_id, np.int32)
+            self.sw_dets['score'][0] = np.array(score, np.float32)
+            self.sw_dets['max_vel'][0] = np.array(max_vel, np.float32)
+            self.sw_dets['indices'][0] = np.arange(len(tracks) + 1)
+            self.sw_dets['num_dets'][0] = len(tracks)
 
 
     def get_detection_to_track_map(self):
@@ -97,10 +164,10 @@ class SWTracker():
         '''
         # TODO: reuse calculation from previous iteration
         # Create tracks with all permuations of detection indices
-        sw_num_dets = self.sw_dets['num_dets'][-self.sw_dets['length']:]
+        sw_num_dets = self.sw_dets['num_dets'][-self.sw_len_curr:]
         ip_len_x = int(np.prod(sw_num_dets + 1))
-        x_det_ind = np.zeros((ip_len_x, self.sw_dets['length']), dtype=np.int64)
-        for iter_frame in range(-self.sw_dets['length'], -1):
+        x_det_ind = np.zeros((ip_len_x, self.sw_len_curr), dtype=np.int64)
+        for iter_frame in range(-self.sw_len_curr, -1):
             x_det_ind[:, iter_frame] = np.tile(np.repeat(
                 self.sw_dets['indices'][iter_frame],
                 np.prod(sw_num_dets[iter_frame+1:] + 1)),
@@ -138,7 +205,7 @@ class SWTracker():
         x_det_states['max_vel'] = np.zeros(x_det_ind.shape)
         x_det_states['score'] = np.zeros(x_det_ind.shape)
 
-        for col_id in range(-self.sw_dets['length'], 0):
+        for col_id in range(-self.sw_len_curr, 0):
             row_ids = x_det_ind[:, col_id] > 0
             detection_indices = x_det_ind[row_ids, col_id] -1
             x_det_states['class_id'][row_ids, col_id] = \
@@ -220,7 +287,7 @@ class SWTracker():
 
                 # Calculate time step and number of frames between detections
                 sw_delta_t = [self.sw_dets['delta_t'][col_id] for col_id in
-                               range(-self.sw_dets['length'], 0)]
+                               range(-self.sw_len_curr, 0)]
                 delta_t = np.sum(sw_delta_t[col_a+1:col_b+1])
                 pair_frames = (col_b-col_a)*np.ones((num_row))[row_bool]
                 x_states['frames'][row_bool] = x_states['frames'][row_bool]\
@@ -253,9 +320,8 @@ class SWTracker():
         x_states['dist_avg_scaled'] = x_states['dist_sum_scaled']/x_states['frames']
         x_states['score_sum'] = np.sum(x_det_states['score'], axis=1)
         x_states['score_avg'] = x_states['score_sum']/(x_states['frames']+1)
-        scores = x_det_states['score']
-        scores[scores == 0] = 999
-        x_states['score_min'] = np.min(scores, axis=1)
+        x_states['score_min'] = np.min(x_det_states['score'],
+            where=x_det_states['score']!=0, initial = 1, axis=1)
         x_states['skip_count'] = np.sum(x_det_ind == 0, axis=1)
 
         return x_states
@@ -323,12 +389,12 @@ class SWTracker():
         if self.cost_flg['llr']:
             dist_cost = x_states['dist_avg_scaled']
             signal_cost = x_states['score_avg']*0
-            skip_cost = -x_states['skip_count']*0
+            skip_cost = -x_states['skip_count']*1
             cost_vec = dist_cost + signal_cost + skip_cost
         # Learned affinity
         elif self.cost_flg['learned']:
             raise NotImplementedError('Learned affinity not implemented yet.')
-
+        x_states['cost_vec'] = cost_vec
         return cost_vec
 
 
@@ -346,9 +412,9 @@ class SWTracker():
         """
         # Compute number of nonzero elements in A matrix
         ip_len_x = x_det_ind.shape[0]
-        sw_num_dets = self.sw_dets['num_dets'][-self.sw_dets['length']:]
-        # nnz_a_mat = self.sw_dets['length'] * ip_len_x
-        # for i in range(0, self.sw_dets['length']):
+        sw_num_dets = self.sw_dets['num_dets'][-self.sw_len_curr:]
+        # nnz_a_mat = self.sw_len_curr * ip_len_x
+        # for i in range(0, self.sw_len_curr):
         #     nnz_a_mat = nnz_a_mat - int(np.prod(sw_num_dets + 1) /
         #                                 (sw_num_dets[i] + 1) -
         #                                 np.sum(sw_num_dets) +
@@ -358,7 +424,7 @@ class SWTracker():
         row_a_ind = 0
         # frame_ind_vec_from_ip_a_row_ind = np.zeros(np.sum(sw_num_dets))
         # det_ind_vec_from_ip_a_row_ind = np.zeros(np.sum(sw_num_dets))
-        for frame_ind in range(0, self.sw_dets['length']):
+        for frame_ind in range(0, self.sw_len_curr):
             for det_ind in range(1, sw_num_dets[frame_ind] + 1):
                 var_ind_vec = np.flatnonzero(x_det_ind[:, frame_ind] == det_ind)
                 # frame_ind_vec_from_ip_a_row_ind[row_a_ind] = frame_ind
@@ -433,15 +499,18 @@ class SWTracker():
             x_score_last = x_det_states['score'][:, -1]
             a_mat = ip_a_mat.toarray()
             while np.any(x_score_last > 0):
+                # select highest cost from highest score detection
                 x_max_last_score_ind = np.argmax(x_score_last)
                 x_last_det_ind = x_det_ind[x_max_last_score_ind, -1]
                 x_bool = np.all(np.stack((x_det_ind[:, -1] == x_last_det_ind,
                                           x_score_last > 0)), axis=0)
+                # select highest cost overall
+                # x_bool = x_score_last > 0
                 x_bool_ind = np.argmax(ip_c_vec[x_bool])
                 x_sol_ind = np.flatnonzero(x_bool)[x_bool_ind]
                 ip_x_sol[x_sol_ind] = 1
                 if np.all(ip_a_mat @ ip_x_sol <= ip_b_vec) == False:
-                    print('help')
+                    raise ValueError('Infeasible solution found.')
                 constraint_rows_bool = a_mat[:, x_sol_ind] == 1
                 constraint_cols_bool = a_mat[constraint_rows_bool, :] == 1
                 x_bool = np.any(constraint_cols_bool, axis=0)
@@ -490,8 +559,11 @@ class SWTracker():
 
         # Loop through tracks and get matched indices to current frame
         matched_indices = np.zeros((0, 2), dtype=int)
+        if self.use_inactive_tracks:
+            raise NotImplementedError
+
         for track_ind, track in enumerate(tracks):
-            if track['age'] >= self.sliding_window_len:
+            if track['age'] >= self.sw_len_curr:
                 continue
             # Get track last detection ID
             track_last_det_id = track['detection_ids'][-track['age']]
@@ -512,7 +584,7 @@ class SWTracker():
         # # Loop through past frames and get matched indices to current frame
         # matched_indices = np.zeros((0, 2), dtype=int)
         # for age in np.sort(np.unique(tracks_age)):
-        #     if age > self.sw_dets['length']-1:
+        #     if age > self.sw_len_curr-1:
         #         break
 
         #     # Get track IDs and detection IDs for given age
@@ -543,6 +615,8 @@ class SWTracker():
 
         # checks
         dist_sol = x_states['dist_max'][ip_x_sol == 1]
+        dist_sol_2 = x_states['dist_avg_scaled'][ip_x_sol == 1]
+        dist_sol_3 = x_states['skip_count'][ip_x_sol == 1]
         dist_det = np.array(
             [np.sqrt((self.sw_dets['pos_x'][-1][det_inds[-1]]
                       - self.sw_dets['pos_x'][-2][det_inds[-2]])**2 +
@@ -573,23 +647,26 @@ class SWTracker():
         ax.set_xlabel("Discrete Time Step, k")
         ax.set_ylabel("Detection ID")
         ax.set_title("Multidimensional Assignment Solution")
-
-        plot_x = np.linspace(0, self.sliding_window_len-1, self.sliding_window_len)
+        plot_x = np.linspace(0, self.sw_len_curr-1, self.sw_len_curr, dtype=int)
         for i in range(0, x_det_ind.shape[0]):
             plot_ids = x_det_ind[i, :] > 0
-            if ip_x_sol[i] == 0:
-                ax.plot(plot_x[plot_ids], x_det_ind[i, plot_ids],
-                        'ko-', ms=plot_ms, lw=plot_lw)
+            ax.plot(plot_x[plot_ids], x_det_ind[i, plot_ids]-1,
+                    'ko', ms=plot_ms, lw=plot_lw)
         for i in range(0, x_det_ind.shape[0]):
             plot_ids = x_det_ind[i, :] > 0
             if ip_x_sol[i] == 1:
-                ax.plot(plot_x[plot_ids], x_det_ind[i, plot_ids],
+                ax.plot(plot_x[plot_ids], x_det_ind[i, plot_ids]-1,
                         'go-', ms=plot_ms, lw=plot_lw)
-
+        for i in range(0, x_det_ind.shape[0]):
+            plot_ids = x_det_ind[i, :] > 0
+            for plot_id in np.flatnonzero(plot_ids):
+                ax.text(plot_x[plot_id], x_det_ind[i, plot_id]-1,
+                    str(plot_x[plot_id])+', '+str(x_det_ind[i, plot_id]-1),
+                    fontsize=text_fontsize)
         out_path = os.path.join(self.work_dir, 'swmot_debug',
-                            'sol_graph_'+str(self.frame_counter)+'-'+sample_token+'.png')
+                            'sol_graph_'+str(self.frame_counter-1)+'-'+sample_token+'.png')
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=200)
+        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=500)
         plt.close
 
         _, ax = plt.subplots(1, 1, figsize=(9, 9))
@@ -611,33 +688,35 @@ class SWTracker():
             ax.text(track_position[0], track_position[1],
                     str(match[1]), fontsize=text_fontsize)
         out_path = os.path.join(self.work_dir, 'swmot_debug',
-                            'sol_match_'+str(self.frame_counter)+'-'+sample_token+'.png')
-        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=200)
+                            'sol_match_'+str(self.frame_counter-1)+'-'+sample_token+'.png')
+        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=500)
         plt.close
 
         _, ax = plt.subplots(1, 1, figsize=(9, 9))
         ax.set_xlabel("X (m)")
         ax.set_ylabel("Y (m)")
         ax.set_title("Detections Solution")
-        detection_ids =[]
+        colors = plt.get_cmap('Reds')(np.linspace(0.2, 0.8, self.sw_len_curr))
+        for j in range(self.sw_len_curr):
+            ax.plot(self.sw_dets['pos_x'][j], self.sw_dets['pos_y'][j],
+                    'o', ms=plot_ms, c=colors[j])
         for i, detection_inds in enumerate(x_det_ind):
             pos_x = []
             pos_y = []
             for f, detection_id in enumerate(detection_inds):
                 if detection_id > 0:
-                    pos_x.append(self.sw_dets['pos_x'][-self.sliding_window_len+f][detection_id-1])
-                    pos_y.append(self.sw_dets['pos_y'][-self.sliding_window_len+f][detection_id-1])
-                    detection_ids.append(detection_id)
-                    ax.text(self.sw_dets['pos_x'][-self.sliding_window_len+f][detection_id-1],
-                            self.sw_dets['pos_y'][-self.sliding_window_len+f][detection_id-1],
+                    pos_x.append(self.sw_dets['pos_x'][-self.sw_len_curr+f][detection_id-1])
+                    pos_y.append(self.sw_dets['pos_y'][-self.sw_len_curr+f][detection_id-1])
+                    ax.text(self.sw_dets['pos_x'][-self.sw_len_curr+f][detection_id-1],
+                            self.sw_dets['pos_y'][-self.sw_len_curr+f][detection_id-1],
                             str(detection_id-1), fontsize=text_fontsize)
             # if ip_x_sol[i] == 0:
-            #     ax.plot(pos_x, pos_y, 'ko-', ms=plot_ms, lw=plot_lw)
+            #     ax.plot(pos_x, pos_y, 'gray', ms=plot_ms, lw=plot_lw)
             if ip_x_sol[i] == 1:
-                ax.plot(pos_x, pos_y, 'go-', ms=plot_ms, lw=plot_lw)
+                ax.plot(pos_x, pos_y, 'go-', ms=plot_ms/10, lw=plot_lw)
         out_path = os.path.join(self.work_dir, 'swmot_debug',
-                            'sol_det_'+str(self.frame_counter)+'-'+sample_token+'.png')
-        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=200)
+                            'sol_det_'+str(self.frame_counter-1)+'-'+sample_token+'.png')
+        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=500)
         plt.close
 
 
@@ -680,8 +759,12 @@ class SWTracker():
             matched_indices (np.array[Px2]): Detection and track indices for
                 P assigned matching pairs.
         """
+        import sys
+        print(sys.getsizeof(self))
+        print(sys.getsizeof(self.sw_dets))
         sample_token = detections[0]['sample_token']
-        self.append_detections(detections, time_lag)
+        self.expand_window(detections, time_lag)
+        self.contract_window(tracks)
         x_det_ind = self.get_detection_to_track_map()
         x_det_states = self.get_track_detection_states(x_det_ind)
         x_states = self.get_track_states(x_det_ind, x_det_states)

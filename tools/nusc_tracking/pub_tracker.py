@@ -136,7 +136,7 @@ class PubTracker(object):
             assert M == 0
             matched_indices = np.array([], np.int32).reshape(-1, 2)
             if self.assigner_swmot:
-                self.swtracker.append_detections(copy.deepcopy(detections), time_lag)
+                self.swtracker.expand_window(copy.deepcopy(detections), time_lag)
 
         unmatched_dets = [d for d in range(dets.shape[0]) \
             if not (d in matched_indices[:, 0])]
@@ -160,6 +160,7 @@ class PubTracker(object):
             track = detections[m[0]]
             track['tracking_id'] = self.tracks[m[1]]['tracking_id']
             track['age'] = 1
+            track['t_age'] = 0.0
             track['active'] = self.tracks[m[1]]['active'] + 1
             track['detection_ids'] = self.tracks[m[1]]['detection_ids']
             track['detection_ids'].append(m[0])
@@ -172,6 +173,7 @@ class PubTracker(object):
             self.id_count += 1
             track['tracking_id'] = self.id_count
             track['age'] = 1
+            track['t_age'] = 0.0
             track['active'] =  1
             track['detection_ids'] = [i]
             track['translation_history'] = [track['translation']]
@@ -183,6 +185,7 @@ class PubTracker(object):
             track = self.tracks[i]
             if track['age'] < self.max_age:
                 track['age'] += 1
+                track['t_age'] += time_lag
                 track['active'] = 0
                 track['detection_ids'].append(-1)
                 ct = track['ct']

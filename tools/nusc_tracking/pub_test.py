@@ -10,7 +10,7 @@ from pub_tracker import PubTracker as Tracker
 from nuscenes import NuScenes
 from nuscenes.utils import splits
 from nuscenes.eval.common.config import config_factory as track_configs
-from nuscenes.eval.tracking.evaluate import TrackingEval 
+from nuscenes_new.eval.tracking.evaluate import TrackingEval
 from nuscenes.utils.data_classes import LidarPointCloud, Box
 from nuscenes.utils.geometry_utils import view_points, transform_matrix
 from pyquaternion import Quaternion
@@ -135,6 +135,8 @@ def main(nusc):
                                     str(i)+'-'+token+'.png')
             render_boxes(nusc, token, preds, outputs, vis_path)
 
+    tracker.reset()
+    del tracker
     del nusc
     end = time.time()
 
