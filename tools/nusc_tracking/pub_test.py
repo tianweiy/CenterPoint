@@ -111,7 +111,7 @@ def main(nusc):
 
         preds = predictions[token]
 
-        outputs = tracker.step_centertrack(preds, time_lag)
+        outputs, preds = tracker.step_centertrack(preds, time_lag)
         annos = []
 
         for item in outputs:
@@ -169,10 +169,10 @@ def eval_tracking():
         args.root
     )
 
-def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1, 
+def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
                  eval_filter=True, with_gt_boxes=True, with_map=True,
                  with_point_cloud=False, with_track_boxes=True,
-                 with_det_boxes=False, conf_thresh=0.1, verbose=False):
+                 with_det_boxes=True, verbose=False):
     # Styles
     style = 'debug'
     if style == 'paper':
@@ -180,11 +180,13 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
         legend_fontsize = 'large'
         plot_linewidth = 1.5
         plot_ms = 3.0
+        score_thresh = 0.1
     elif style == 'debug':
         text_fontsize = 3
         legend_fontsize = 'small'
         plot_linewidth = 0.3
         plot_ms = 0.5
+        score_thresh = 0.0
     else:
         raise ValueError('unknown style')
 
@@ -210,7 +212,7 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
 
     # Create plots
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    _, ax = plt.subplots(1, 1, figsize=(9, 9))
+    fig, ax = plt.subplots(1, 1, figsize=(9, 9))
 
     # Render map
     if with_map:
@@ -262,7 +264,7 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
             box.render(ax, view=np.eye(4), colors=(c, c, c), linewidth=plot_linewidth)
             ann_record = nusc.get('sample_annotation', box.token)
             inst_id = ann_record['instance_token']
-            ax.text(box.center[0], box.center[1]-0.8, inst_id[:4], c='k', fontsize=text_fontsize)
+            # ax.text(box.center[0], box.center[1]-0.8, inst_id[:4], c='k', fontsize=text_fontsize)
             hist_ann_record = nusc.get('instance', inst_id)
             hist_ann_token = hist_ann_record['first_annotation_token']
             gt_history = []
@@ -279,24 +281,35 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
 
     # Render detections in lidar frame
     if with_det_boxes:
-        for det in dets:
-            if det['detection_score'] < conf_thresh:
+        fig2, ax2 = plt.subplots(1, 1, figsize=(9, 9))
+        for det_id, det in enumerate(dets):
+            if det['detection_score'] < score_thresh:
                 continue
             c = 'lightgray'
+            c = cfg.tracking_colors[det['detection_name']]
             box = Box(det['translation'], det['size'],
                         Quaternion(det['rotation']),
                         name=det['detection_name'])
             box.translate(-np.array(ego_translation))
             box.rotate(ego_quat.inverse)
-            box.render(ax, view=np.eye(4), colors=(c, c, c), linewidth=plot_linewidth)
+            box.render(ax2, view=np.eye(4), colors=(c, c, c), linewidth=plot_linewidth)
+            ax2.text(box.center[0], box.center[1], det_id, c='k', fontsize=text_fontsize)
             # ax.scatter(box.center[0], box.center[1], 5, c, 'x')
+        ax2.set_xlim(-axes_limit, axes_limit)
+        ax2.set_ylim(-axes_limit, axes_limit)
+        ax2.set_aspect('equal')
+        path_split = os.path.split(out_path)
+        out_path2 = os.path.join(path_split[0], 'dets_' + path_split[1])
+        fig2.savefig(out_path2, bbox_inches='tight', pad_inches=0, dpi=400)
+        plt.close()
+
 
     # Render tracks in ego frame
     if with_track_boxes:
         pred_boxes = []
         track_histories =[]
         for item in tracks:
-            if item['active'] == 0 or item['detection_score'] < conf_thresh:
+            if item['active'] == 0 or item['detection_score'] < score_thresh:
                 continue
 
             # Tranform box to ego frame
@@ -351,13 +364,12 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
         Line2D([0], [0], label='trailer', color=cfg.tracking_colors['trailer']),
         Line2D([0], [0], label='pedestrian', color=cfg.tracking_colors['pedestrian']),
         Line2D([0], [0], label='motorcycle', color=cfg.tracking_colors['motorcycle']),
-        Line2D([0], [0], label='bicycle', color=cfg.tracking_colors['bicycle'])]
+        Line2D([0], [0], label='bicycle', color=cfg.tracking_colors['bicycle']),
+        Line2D([0], [0], label='gt', color='k')]
     ax.legend(handles=handles, fontsize=legend_fontsize, loc='upper right')
 
     if out_path is not None:
-        plt.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=200)
-    if verbose:
-        plt.show()
+        fig.savefig(out_path, bbox_inches='tight', pad_inches=0, dpi=400)
     plt.close()
 
 

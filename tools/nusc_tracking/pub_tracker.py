@@ -84,6 +84,8 @@ class PubTracker(object):
             temp.append(det)
         detections = temp
 
+        detections = self.swtracker.filter_detections(detections)
+
         # Check if detections exist
         if len(detections) == 0:
             raise ValueError('Unexpected results length') # TODO: implement if needed
@@ -197,4 +199,4 @@ class PubTracker(object):
                 ret.append(track)
 
         self.tracks = ret
-        return ret
+        return ret, detections
