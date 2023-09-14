@@ -3,6 +3,7 @@ import numpy as np
 from scipy import optimize
 from track_utils import greedy_assignment
 from swtracker import SWTracker
+from nms import filter_detections
 
 NUSCENES_TRACKING_NAMES = [
     'bicycle',
@@ -49,7 +50,7 @@ class PubTracker(object):
             self.swtracker = SWTracker(work_dir)
 
         # Initialize parameters
-        self.max_age = max_age
+        self.max_age = 3  # 3
         self.nuscene_cls_velocity_error = NUSCENE_CLS_VELOCITY_ERROR
         self.reset()
 
@@ -84,7 +85,7 @@ class PubTracker(object):
             temp.append(det)
         detections = temp
 
-        detections = self.swtracker.filter_detections(detections)
+        detections = filter_detections(detections)
 
         # Check if detections exist
         if len(detections) == 0:
@@ -176,7 +177,9 @@ class PubTracker(object):
             track['tracking_id'] = self.id_count
             track['age'] = 1
             track['t_age'] = 0.0
-            track['active'] =  1
+            track['active'] =  0
+            if (M == 0 and track['detection_score'] > 0.3) or track['detection_score'] > 0.5:
+                track['active'] =  1
             track['detection_ids'] = [i]
             track['translation_history'] = [track['translation']]
             ret.append(track)

@@ -26,9 +26,9 @@ class SWTracker():
         self.cost_flg = {"dist_max": False, "dist_avg": False, "dist_sum": False,
                          "llr": True, "learned": False}
         assert sum(self.cost_flg.values()) == 1
-        self.solver_flg = {"gurobi": False, "greedy": True}
+        self.solver_flg = {"gurobi": True, "greedy": False}
         assert sum(self.solver_flg.values()) == 1
-        self.sw_len_max = 2
+        self.sw_len_max = 4
         assert self.sw_len_max >= 2
         self.plot_flg = False
         self.debug_flg = True
@@ -60,6 +60,7 @@ class SWTracker():
                         "size_w": [], "size_l": [], "rot": [],
                         "num_dets": np.array([], dtype=np.int16), "indices": [],
                         }
+        self.scene_frame_counter = 0
         self.sw_len_curr = 0
         self.x_det_ind = None
 
@@ -83,7 +84,6 @@ class SWTracker():
             time_lag (float): Timestep from last assignment to current one.
         '''
         profiler = self.profile_start()
-        # detections = self.filter_detections(detections)
         self.sw_dets['delta_t'].append(time_lag)
         self.sw_dets['pos_x'].append(
             np.array([det['translation'][0] for det in detections], np.float32))
@@ -118,91 +118,8 @@ class SWTracker():
             self.sw_dets['num_dets'], len(detections))
         self.sw_len_curr += 1
         self.frame_counter += 1
+        self.scene_frame_counter += 1
         self.profile_end(profiler, 'expand_window')
-
-
-    def iou2d(self, box_a, box_b):
-        """
-        Compute 2D bounding box IoU.
-        
-        Args:
-            box_a (list[float]): Box A with format [x, y, w, l, r].
-            box_b (list[float]): Box B with format [x, y, w, l, r].
-        """
-        def box2corners2d(bbox):
-            """ the coordinates for bottom corners
-            """
-            bottom_center = np.array([bbox[0], bbox[1]])
-            cos, sin = np.cos(bbox[4]), np.sin(bbox[4])
-            pc0 = np.array([bbox[0] + cos * bbox[3] / 2 + sin * bbox[2] / 2,
-                            bbox[1] + sin * bbox[3] / 2 - cos * bbox[2] / 2])
-            pc1 = np.array([bbox[0] + cos * bbox[3] / 2 - sin * bbox[2] / 2,
-                            bbox[1] + sin * bbox[3] / 2 + cos * bbox[2] / 2])
-            pc2 = 2 * bottom_center - pc0
-            pc3 = 2 * bottom_center - pc1
-            return [pc0.tolist(), pc1.tolist(), pc2.tolist(), pc3.tolist()]
-        from shapely.geometry import Polygon
-        boxa_corners = np.array(box2corners2d(box_a))
-        boxb_corners = np.array(box2corners2d(box_b))
-        reca, recb = Polygon(boxa_corners), Polygon(boxb_corners)
-        overlap = reca.intersection(recb).area
-        area_a = reca.area
-        area_b = recb.area
-        iou = overlap / (area_a + area_b - overlap + 1e-10)
-        return iou
-
-
-    def filter_detections(self, detections, score_thresh=0.0001, iou_thresh=0.1):
-        """Filter detections based on score and extra NMS."""
-        profiler = self.profile_start()
-        # Filter out low score detections
-        score_cond = np.array([det['detection_score'] > score_thresh
-                      for det in detections])
-        # Filter out detections with same class and location (NMS)
-        class_ids = np.array([det['label_preds'] for det in detections])
-        same_class_mat = np.equal(
-            class_ids.reshape(-1, 1),
-            class_ids.reshape(1, -1))
-        pos_x = np.array([det['translation'][0] for det in detections])
-        pos_y = np.array([det['translation'][1] for det in detections])
-        size_w = np.array([det['size'][0] for det in detections])
-        size_l = np.array([det['size'][1] for det in detections])
-        rot = np.array([det['rotation'][2] for det in detections])
-        ind_remove = np.zeros(len(detections), dtype=np.bool)
-        max_iou = np.zeros(len(detections))
-        for i in range(len(detections)):
-            if ind_remove[i]:
-                continue
-            iou_vec = np.zeros(len(detections))
-            for j in range(i+1, len(detections)):
-                dist = np.sqrt((pos_x[i] -
-                                pos_x[j])**2 +
-                                (pos_y[i] -
-                                 pos_y[j])**2)
-                max_dim = np.max([size_w[i],
-                                  size_l[i],
-                                  size_w[j],
-                                  size_l[j]])
-                if same_class_mat[i, j] and dist < max_dim and not ind_remove[j]:
-                    iou_vec[j] = self.iou2d(
-                        [pos_x[i],
-                        pos_y[i],
-                        size_w[i],
-                        size_l[i],
-                        rot[i]],
-                        [pos_x[j],
-                        pos_y[j],
-                        size_w[j],
-                        size_l[j],
-                        rot[j]])
-            ind_remove += (iou_vec > iou_thresh)
-            max_iou[i] = np.max(iou_vec)
-        nms_cond = np.logical_not(ind_remove)
-        # Filter detections
-        x_cond = np.logical_and(score_cond, nms_cond)
-        detections = [det for det, cond in zip(detections, x_cond) if cond]
-        self.profile_end(profiler, 'filter_detections')
-        return detections
 
 
     def contract_window(self, tracks):
@@ -390,74 +307,26 @@ class SWTracker():
                     sw_dets['pos_x'][col_id][detection_indices]
                 x_pos_y[row_ids, col_id] = \
                     sw_dets['pos_y'][col_id][detection_indices]
-            map_shape = np.shape(x_det_ind)
+            
+            # Get max distance between detections averaged by number of frames
             num_row = np.size(x_det_ind, 0)
             num_col = np.size(x_det_ind, 1)
             x_dist_max = np.zeros(num_row, dtype=np.float32)
-            x_frames = np.zeros(num_row, dtype=np.float32)
             x_diff_x = x_pos_x[:,1:]-x_pos_x[:,:-1]
             x_diff_y = x_pos_y[:,1:]-x_pos_y[:,:-1]
             x_bool = x_det_ind != 0
             x_diff_bool = x_bool[:,1:]*x_bool[:,:-1]
             for i in range(num_col-2):
-                if i == 0:
-                    x_diff_x = np.hstack((x_diff_x,
-                                          (x_pos_x[:,2:]-x_pos_x[:,:-2])/2))
-                    x_diff_y = np.hstack((x_diff_y,
-                                          (x_pos_y[:,2:]-x_pos_y[:,:-2])/2))
-                    x_diff_bool = np.hstack((x_diff_bool,
-                                             x_bool[:,2:]*x_bool[:,:-2]))
-                if i == 1:
-                    x_diff_x = np.hstack((x_diff_x,
-                                          (x_pos_x[:,3:]-x_pos_x[:,:-3])/3))
-                    x_diff_y = np.hstack((x_diff_y,
-                                          (x_pos_y[:,3:]-x_pos_y[:,:-3])/3))
-                    x_diff_bool = np.hstack((x_diff_bool,
-                                             x_bool[:,3:]*x_bool[:,:-3]))
-                if i == 2:
-                    x_diff_x = np.hstack((x_diff_x,
-                                          (x_pos_x[:,4:]-x_pos_x[:,:-4])/4))
-                    x_diff_y = np.hstack((x_diff_y,
-                                          (x_pos_y[:,4:]-x_pos_y[:,:-4])/4))
-                    x_diff_bool = np.hstack((x_diff_bool,
-                                             x_bool[:,4:]*x_bool[:,:-4]))
-                if i == 3:
-                    x_diff_x = np.hstack((x_diff_x,
-                                          (x_pos_x[:,5:]-x_pos_x[:,:-5])/5))
-                    x_diff_y = np.hstack((x_diff_y,
-                                          (x_pos_y[:,5:]-x_pos_y[:,:-5])/5))
-                    x_diff_bool = np.hstack((x_diff_bool,
-                                             x_bool[:,5:]*x_bool[:,:-5]))
+                x_diff_x = np.hstack((x_diff_x,
+                                      (x_pos_x[:,2+i:]-x_pos_x[:,:-2-i])/(2+i)))
+                x_diff_y = np.hstack((x_diff_y,
+                                      (x_pos_y[:,2+i:]-x_pos_y[:,:-2-i])/(2+i)))
+                x_diff_bool = np.hstack((x_diff_bool,
+                                         x_bool[:,2+i:]*x_bool[:,:-2-i]))
             x_dist = np.float32(np.sqrt(np.float32(x_diff_x)**2 + np.float32(x_diff_y)**2))
             x_dist_max = np.max(x_dist, where=x_diff_bool, initial=0, axis=1)
-            # for col_a in range(0, num_col-1):
-            #     for col_b in range(col_a+1, num_col):
-            #         # Select rows with both detections and none in between
-            #         map_bool = np.zeros(map_shape, dtype=np.bool)
-            #         map_cond = np.zeros(map_shape, dtype=np.bool)
-            #         map_bool[:, col_a:col_b+1] = x_det_ind[:, col_a:col_b+1] > 0
-            #         map_cond[:, col_a] = True
-            #         map_cond[:, col_b] = True
-            #         row_bool = np.all(map_bool == map_cond, axis=1)
-            #         self.profile_end(profiler, '2.0')
 
-            #         # Calculate time step and number of frames between detections
-            #         pair_frames = (col_b-col_a)*np.ones(
-            #             (num_row), dtype=np.uint8)[row_bool]
-            #         x_frames[row_bool] = x_frames[row_bool]\
-            #             + pair_frames
-            #         self.profile_end(profiler, '2.1')
-
-            #         # Compute distance between detections for given pair of frames
-            #         pair_dist_x = x_pos_x[row_bool, col_b] - \
-            #             x_pos_x[row_bool, col_a]
-            #         pair_dist_y = x_pos_y[row_bool, col_b] - \
-            #             x_pos_y[row_bool, col_a]
-            #         pair_dist = np.sqrt(pair_dist_x**2 + pair_dist_y**2)
-            #         x_dist_max[row_bool] = np.amax(np.stack(
-            #             [x_dist_max[row_bool], pair_dist/pair_frames],
-            #             axis=1), axis=1)
-            #         self.profile_end(profiler, '2.2')
+            # Get max velocity averaged by number of frames
             x_dist_limit = 140 / 3.6 * 0.5 # 140 km/h
             x_cond = x_dist_max < x_dist_limit
             x_det_ind = x_det_ind[x_cond, :]
@@ -540,6 +409,7 @@ class SWTracker():
         profiler = self.profile_start()
         max_pair_frames = self.distance_scaling_cutoff_time / self.dt
         max_batch_size = 1e8
+        # x_det_ind = x_det_ind[x_det_ind[:,-1] != 0] # clipping last frame
         num_batches = int(np.ceil(x_det_ind.size / max_batch_size))
         x_det_ind_split = np.array_split(x_det_ind, num_batches, axis=0)
         for i in range(num_batches):
@@ -556,9 +426,10 @@ class SWTracker():
             print(f'>> Vars: {x_det_ind_split[i].shape[0]:,}')
             x_det_ind_split[i] = filter_distance(
                 self.sw_len_curr, self.sw_dets, x_det_ind_split[i], max_pair_frames)
-            print(f'>> Vars: {x_det_ind_split[i].shape[0]:,} (batch {i+1}/{num_batches})')
+            print(f'>> Vars: {x_det_ind_split[i].shape[0]:,}')
         x_det_ind = np.concatenate(x_det_ind_split, axis=0)
         x_det_ind = np.unique(x_det_ind, axis=0)
+        print(f'>> Vars: {x_det_ind.shape[0]:,}')
         self.profile_end(profiler, 'filter_map')
 
         return x_det_ind
@@ -654,6 +525,7 @@ class SWTracker():
         num_row = np.size(x_det_ind, 0)
         num_col = np.size(x_det_ind, 1)
         x_states['dist_sum'] = np.zeros(num_row, dtype=np.float32)
+        x_states['dist_sqr_sum'] = np.zeros(num_row, dtype=np.float32)
         x_states['neg_dist_sum_scaled'] = np.zeros(num_row, dtype=np.float32)
         x_states['dist_max'] = np.zeros(num_row, dtype=np.float32)
         x_states['dist_max_scaled'] = np.zeros(num_row, dtype=np.float32)
@@ -679,14 +551,26 @@ class SWTracker():
                     + pair_frames
 
                 # Compute distance between detections for given pair of frames
+                # pair_dist_x = x_det_states['pos_x'][row_bool, col_b] - \
+                #     (x_det_states['vel_x'][row_bool, col_a] +
+                #      x_det_states['vel_x'][row_bool, col_b]) / 2 * delta_t - \
+                #     x_det_states['pos_x'][row_bool, col_a]
+                # pair_dist_y = x_det_states['pos_y'][row_bool, col_b] - \
+                #     (x_det_states['vel_y'][row_bool, col_a] +
+                #      x_det_states['vel_y'][row_bool, col_b]) / 2 * delta_t - \
+                #     x_det_states['pos_y'][row_bool, col_a]
+                if self.scene_frame_counter - num_col + col_a == 0:
+                    pair_delta_x = x_det_states['vel_x'][row_bool, col_b] * delta_t
+                    pair_delta_y = x_det_states['vel_y'][row_bool, col_b] * delta_t
+                else:
+                    pair_delta_x = (x_det_states['vel_x'][row_bool, col_b] +
+                                    x_det_states['vel_x'][row_bool, col_a]) / 2 * delta_t
+                    pair_delta_y = (x_det_states['vel_y'][row_bool, col_b] +
+                                    x_det_states['vel_y'][row_bool, col_a]) / 2 * delta_t
                 pair_dist_x = x_det_states['pos_x'][row_bool, col_b] - \
-                    (x_det_states['vel_x'][row_bool, col_a] +
-                     x_det_states['vel_x'][row_bool, col_b]) / 2 * delta_t - \
-                    x_det_states['pos_x'][row_bool, col_a]
+                    pair_delta_x - x_det_states['pos_x'][row_bool, col_a]
                 pair_dist_y = x_det_states['pos_y'][row_bool, col_b] - \
-                    (x_det_states['vel_y'][row_bool, col_a] +
-                     x_det_states['vel_y'][row_bool, col_b]) / 2 * delta_t - \
-                    x_det_states['pos_y'][row_bool, col_a]
+                    pair_delta_y - x_det_states['pos_y'][row_bool, col_a]
                 pair_dist = np.sqrt(pair_dist_x**2 + pair_dist_y**2)
                 scale_max = 15 # TODO: dataset specific
                 pair_neg_dist_scaled = (scale_max - pair_dist)/scale_max
@@ -694,6 +578,8 @@ class SWTracker():
                 # Compute running total distance, max distance, scores
                 x_states['dist_sum'][row_bool] = x_states['dist_sum'][row_bool]\
                     + pair_dist
+                x_states['dist_sqr_sum'][row_bool] = x_states['dist_sqr_sum'][row_bool]\
+                    + pair_dist**2
                 x_states['dist_max'][row_bool] = np.amax(np.stack(
                     [x_states['dist_max'][row_bool], pair_dist/pair_frames],
                     axis=1), axis=1)
@@ -707,50 +593,18 @@ class SWTracker():
         x_states['neg_dist_avg_scaled'] = (scale_max-x_states['dist_sum'])/(
             scale_max*x_states['frames'])
         x_states['score_sum'] = np.sum(x_det_states['score'], axis=1)
+        x_states['score_log'] = np.log(x_det_states['score'],
+                                       out=np.zeros_like(x_det_states['score']),
+                                       where=x_det_states['score']!=0)
+        x_states['score_sum_log'] = np.sum(x_states['score_log'], axis=1)
         x_states['score_avg'] = x_states['score_sum']/(x_states['frames']+1)
         x_states['score_min'] = np.min(x_det_states['score'],
             where=x_det_states['score']!=0, initial = 1, axis=1)
         x_states['skip_count'] = np.sum(x_det_ind == 0, axis=1)
+        x_states['det_count'] = np.sum(x_det_ind != 0, axis=1)
         self.profile_end(profiler, 'get_track_states')
 
         return x_states
-
-
-    def filter_tracks(self, x_det_ind, x_det_states, x_states):
-        """
-        Filter out decision variables that are improbable.
-        
-        Args:
-            x_det_ind (np.array[NxT]): Array of detection indices for
-                N decision variables and T frames.
-            x_det_states (dict[np.array[NxT]]): dictionary of detection states,
-                each state is an array for N decision variables and T frames.
-            x_states (dict[np.array[N]]): dictionary of track states,
-                each state is an array for N decision variables.
-            
-        Returns:
-            x_det_ind (np.array[NxT]): Array of detection indices for
-                N decision variables and T frames.
-            x_det_states (dict[np.array[NxT]]): dictionary of detection states,
-                each state is an array for N decision variables and T frames.
-            x_states (dict[np.array[N]]): dictionary of track states,
-                each state is an array for N decision variables.
-        """
-        profiler = self.profile_start()
-        # Condition for tracks with one class and detections in distance limit
-        x_dist_cond = x_states['dist_max'] < x_states['dist_limit']
-        x_class_cond = x_states['one_class_bool']
-        x_score_cond = x_states['score_min'] > 0.0001
-        x_cond = np.all(np.stack([x_dist_cond, x_class_cond, x_score_cond],
-                                 axis=1), axis=1)
-
-        # Filter out decision variables based on condition
-        x_states = {key: val[x_cond] for key, val in x_states.items()}
-        x_det_ind = x_det_ind[x_cond, :]
-        x_det_states = {key: val[x_cond, :] for key, val in x_det_states.items()}
-        self.profile_end(profiler, 'filter_tracks')
-
-        return x_det_ind, x_det_states, x_states
 
 
     def get_cost_vec(self, x_states):
@@ -779,10 +633,10 @@ class SWTracker():
             cost_vec = x_states['neg_dist_sum_scaled']
         # Probabilistic log likelihood ratio
         if self.cost_flg['llr']:
-            const_cost = 1
-            dist_cost = x_states['neg_dist_avg_scaled']
-            signal_cost = 0*x_states['score_avg']
-            skip_cost = -0.1*x_states['skip_count']
+            const_cost = 100.0*x_states['det_count']
+            dist_cost = -0.5*x_states['dist_sqr_sum']
+            signal_cost = 5.0*x_states['score_sum_log']
+            skip_cost = -90.0*x_states['skip_count']
             cost_vec = const_cost + dist_cost + signal_cost + skip_cost
         # Learned affinity
         elif self.cost_flg['learned']:
@@ -790,6 +644,51 @@ class SWTracker():
         x_states['cost_vec'] = cost_vec
         self.profile_end(profiler, 'get_cost_vec')
         return cost_vec
+
+
+    def filter_hypotheses(self, x_det_ind, x_det_states, x_states, cost_vec):
+        """
+        Filter out decision variables that are improbable.
+        
+        Args:
+            x_det_ind (np.array[NxT]): Array of detection indices for
+                N decision variables and T frames.
+            x_det_states (dict[np.array[NxT]]): dictionary of detection states,
+                each state is an array for N decision variables and T frames.
+            x_states (dict[np.array[N]]): dictionary of track states,
+                each state is an array for N decision variables.
+            
+        Returns:
+            x_det_ind (np.array[NxT]): Array of detection indices for
+                N decision variables and T frames.
+            x_det_states (dict[np.array[NxT]]): dictionary of detection states,
+                each state is an array for N decision variables and T frames.
+            x_states (dict[np.array[N]]): dictionary of track states,
+                each state is an array for N decision variables.
+        """
+        profiler = self.profile_start()
+        # Limit to only top hypotheses per detection
+        max_hyp = 200
+        max_det_ind = np.max(x_det_ind[:,-1])
+        x_ind = []
+        hyp_count = []
+        for i in range(0, max_det_ind+1):
+            det_ind = np.flatnonzero(x_det_ind[:, -1] == i)
+            hyp_count.append(len(det_ind))
+            if len(det_ind) > max_hyp:
+                top_det_ind = np.argpartition(cost_vec[det_ind], -max_hyp)[-max_hyp:]
+                det_ind = det_ind[top_det_ind]
+            x_ind.append(det_ind)
+        x_ind = np.concatenate(x_ind)
+        x_states = {key: val[x_ind] for key, val in x_states.items()}
+        x_det_ind = x_det_ind[x_ind, :]
+        x_det_states = {key: val[x_ind, :] for key, val in x_det_states.items()}
+        cost_vec = cost_vec[x_ind]
+        print(f'>> Hypotheses: {hyp_count}')
+        print(f'>> Vars: {x_det_ind.shape[0]:,}')
+        self.profile_end(profiler, 'filter_hypotheses')
+
+        return x_det_ind, x_det_states, x_states, cost_vec
 
 
     def get_constraints(self, x_det_ind):
@@ -891,7 +790,53 @@ class SWTracker():
             except AttributeError:
                 print('Encountered an attribute error')
 
+            # lp_x_sol = 0
+            # try:
+            #     # Optimize model and extract solution
+            #     start_time = time.time()
+            #     lp_model = gp.Model("model")
+            #     ip_len = ip_c_vec.shape[0]
+            #     lp_x = lp_model.addMVar(shape=ip_len, lb=0.0, ub=1.0,
+            #                             vtype='C', name="variables")
+            #     lp_model.setObjective(ip_c_vec @ lp_x, gp.GRB.MAXIMIZE)
+            #     lp_model.addConstr(ip_a_mat @ lp_x <= ip_b_vec, name="constraints")
+            #     lp_model.setParam('OutputFlag', 1)
+            #     lp_model.optimize()
+            #     lp_x_sol = lp_x.X.astype(int)
+            #     if debug_flg:
+            #         print(f"-- Optimization: {round((time.time() - start_time), 3)}"
+            #             "s seconds --")
+            #     lp_sol_status = lp_model.getAttr(gp.GRB.Attr.Status)
+            #     if lp_sol_status == 2:
+            #         if debug_flg:
+            #             print('Status code = 2. OPTIMAL. '
+            #                 'Model was solved to optimality (subject to tolerances)' 
+            #                 ' and an optimal solution is available. ')
+            #     else:
+            #         print('Status code =', lp_sol_status,
+            #               '. OFF-NOMINAL. POSSIBLE ISSUE.')
+            # except gp.GurobiError as exception:
+            #     print('Error code: ' + str(exception))
+            # except AttributeError:
+            #     print('Encountered an attribute error')
+
+
         elif self.solver_flg['greedy']:
+            # ip_x_sol = np.zeros(ip_c_vec.shape[0], dtype=np.uint8)
+            # x_score_last = x_det_states['score'][:, -1]
+            # x_last_det_ind_sorted = np.argsort(x_score_last)
+            # a_mat = ip_a_mat.toarray()
+            # for i in range(len(x_last_det_ind_sorted)-1, -1, -1):
+            #     x_last_det_ind = x_last_det_ind_sorted[i]
+            #     x_last_det_bool = x_det_ind[:, -1] == x_last_det_ind
+            #     if np.any(x_last_det_bool):
+            #         x_bool_ind = np.argmax(ip_c_vec[x_last_det_bool])
+            #         x_sol_ind = np.flatnonzero(x_last_det_bool)[x_bool_ind]
+            #         ip_x_sol[x_sol_ind] = 1
+            #         constraint_rows_bool = a_mat[:, x_sol_ind] == 1
+            #         constraint_cols_bool = a_mat[constraint_rows_bool, :] == 1
+            #         x_bool = np.any(constraint_cols_bool, axis=0)
+            #         x_score_last[x_bool] = -1
             ip_x_sol = np.zeros(ip_c_vec.shape[0], dtype=np.uint8)
             x_score_last = x_det_states['score'][:, -1]
             a_mat = ip_a_mat.toarray()
@@ -997,7 +942,7 @@ class SWTracker():
         return matched_indices_ext
 
 
-    def verify_solution(self, x_det_ind, ip_x_sol, detections, tracks, matched_indices, x_states):
+    def verify_solution(self, x_det_ind, ip_x_sol, detections, tracks, matched_indices, x_states, x_det_states):
         # checks
         sol_det_ind_int = x_det_ind[ip_x_sol == 1, :] -1 # -1 for 0-indexing
         dist_sol = x_states['dist_max'][ip_x_sol == 1]
@@ -1019,6 +964,8 @@ class SWTracker():
             [detections[match[0]]['label_preds'] for match in matched_indices])
         track_classes = np.array(
             [tracks[match[1]]['label_preds'] for match in matched_indices])
+        track_ids = np.array(
+            [tracks[match[1]]['tracking_id'] for match in matched_indices])
         assert np.all(det_classes == track_classes)
 
 
@@ -1207,14 +1154,14 @@ class SWTracker():
         x_det_ind = self.filter_map(x_det_ind)
         x_det_states = self.get_track_detection_states(x_det_ind)
         x_states = self.get_track_states(x_det_ind, x_det_states)
-        # x_det_ind, x_det_states, x_states = \
-        #     self.filter_tracks(x_det_ind, x_det_states, x_states)
         ip_c_vec = self.get_cost_vec(x_states)
+        x_det_ind, x_det_states, x_states, ip_c_vec = \
+            self.filter_hypotheses(x_det_ind, x_det_states, x_states, ip_c_vec)
         ip_a_mat, ip_b_vec = self.get_constraints(x_det_ind)
         ip_x_sol = self.solve_ip(ip_a_mat, ip_b_vec, ip_c_vec, x_det_states,
                                  x_det_ind, x_states)
         matched_indices = self.get_matched_indices(ip_x_sol, x_det_ind, tracks)
-        self.verify_solution(x_det_ind, ip_x_sol, detections, tracks, matched_indices, x_states)
+        self.verify_solution(x_det_ind, ip_x_sol, detections, tracks, matched_indices, x_states, x_det_states)
         if self.plot_flg:
             sample_token = detections[0]['sample_token']
             self.debug_plot(ip_x_sol, x_det_ind, x_states, matched_indices,

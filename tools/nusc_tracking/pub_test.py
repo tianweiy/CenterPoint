@@ -96,7 +96,7 @@ def main(nusc):
 
     print("Begin Tracking\n")
     start = time.time()
-    for i in range(size):
+    for i in range(200, size):
         token = frames[i]['token']
 
         # reset tracking after one video sequence
@@ -285,7 +285,7 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
         for det_id, det in enumerate(dets):
             if det['detection_score'] < score_thresh:
                 continue
-            c = 'lightgray'
+            # c = 'lightgray'
             c = cfg.tracking_colors[det['detection_name']]
             box = Box(det['translation'], det['size'],
                         Quaternion(det['rotation']),
@@ -294,6 +294,8 @@ def render_boxes(nusc, token, dets, tracks, out_path, axes_limit=50, nsweeps=1,
             box.rotate(ego_quat.inverse)
             box.render(ax2, view=np.eye(4), colors=(c, c, c), linewidth=plot_linewidth)
             ax2.text(box.center[0], box.center[1], det_id, c='k', fontsize=text_fontsize)
+            ax2.text(box.center[0], box.center[1]-0.8, round(det['detection_score'], 2),
+                c='k', fontsize=text_fontsize)
             # ax.scatter(box.center[0], box.center[1], 5, c, 'x')
         ax2.set_xlim(-axes_limit, axes_limit)
         ax2.set_ylim(-axes_limit, axes_limit)
